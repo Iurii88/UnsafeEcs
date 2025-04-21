@@ -1,7 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Mathematics;
 using UnsafeEcs.Core.Components;
 using UnsafeEcs.Core.DynamicBuffers;
 using UnsafeEcs.Core.Utils;
@@ -110,13 +109,13 @@ namespace UnsafeEcs.Core.Entities
                 version = recycledEntity.version + 1;
                 freeEntities.RemoveAt(freeEntities.Length - 1);
                 deadEntities.Ptr[entityId] = false;
-                
+
                 var entity = new Entity
                 {
                     id = entityId, version = version,
                     managerPtr = GetManagerPtr()
                 };
-                
+
                 entities.Ptr[entityId] = entity;
                 entityArchetypes.Ptr[entityId] = new EntityArchetype();
                 deadEntities.Ptr[entityId] = false;
@@ -142,19 +141,19 @@ namespace UnsafeEcs.Core.Entities
             }
         }
 
-        private unsafe EntityManager* GetManagerPtr()
+        private EntityManager* GetManagerPtr()
         {
             fixed (EntityManager* ptr = &this)
                 return ptr;
         }
-        
+
         public void DestroyEntity(Entity entity)
         {
             if (!IsEntityAlive(entity)) return;
-            
+
             DestroyEntityComponents(entity);
             DestroyEntityBuffers(entity);
-    
+
             freeEntities.Add(entity);
             deadEntities.Ptr[entity.id] = true;
         }

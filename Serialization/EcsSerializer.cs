@@ -86,67 +86,56 @@ namespace UnsafeEcs.Serialization
             return output;
         }
 
-        public static void Deserialize(NativeArray<byte> data)
+        public static void Deserialize(byte[] data)
         {
-            byte* ptr = (byte*)data.GetUnsafeReadOnlyPtr();
-            int position = 0;
-
-            // Read magic number
-            int magic = *(int*)(ptr + position);
-            position += 4;
-
-            if (magic != MagicNumber)
-                throw new InvalidOperationException("Invalid data format");
-
-            // Read version
-            int version = *(int*)(ptr + position);
-            position += 4;
-
-            if (version != Version)
-                throw new InvalidOperationException($"Unsupported version: {version}");
-
-            // Read type info size
-            int typeInfoSize = *(int*)(ptr + position);
-            position += 4;
-
-            // Extract type info data
-            var typeInfoData = new NativeArray<byte>(typeInfoSize, Allocator.Temp);
-            UnsafeUtility.MemCpy(typeInfoData.GetUnsafePtr(), ptr + position, typeInfoSize);
-            position += typeInfoSize;
-
-            // Deserialize type info
-            ComponentTypeSerializer.DeserializeTypeInfo(typeInfoData);
-            typeInfoData.Dispose();
-
-            // Read world count
-            int worldCount = *(int*)(ptr + position);
-            position += 4;
-
-            // Clear existing worlds
-            WorldManager.DestroyAllWorlds();
-
-            // Deserialize each world
-            for (int i = 0; i < worldCount; i++)
+            fixed (byte* ptr = data)
             {
-                int worldDataSize = *(int*)(ptr + position);
+                int position = 0;
+
+                // Read magic number
+                int magic = *(int*)(ptr + position);
                 position += 4;
 
-                var worldData = new NativeArray<byte>(worldDataSize, Allocator.Temp);
-                UnsafeUtility.MemCpy(worldData.GetUnsafePtr(), ptr + position, worldDataSize);
-                position += worldDataSize;
+                if (magic != MagicNumber)
+                    throw new InvalidOperationException("Invalid data format");
 
-                // Create new world
-                var world = WorldManager.CreateWorld();
+                // Read version
+                int version = *(int*)(ptr + position);
+                position += 4;
 
-                // Convert NativeArray to byte[] for WorldSerializer.Deserialize
-                var worldDataArray = new byte[worldDataSize];
-                fixed (byte* destPtr = worldDataArray)
+                if (version != Version)
+                    throw new InvalidOperationException($"Unsupported version: {version}");
+
+                // Read type info size
+                int typeInfoSize = *(int*)(ptr + position);
+                position += 4;
+
+                // Extract type info data
+                var typeInfoData = new NativeArray<byte>(typeInfoSize, Allocator.Temp);
+                UnsafeUtility.MemCpy(typeInfoData.GetUnsafePtr(), ptr + position, typeInfoSize);
+                position += typeInfoSize;
+
+                // Deserialize type info
+                ComponentTypeSerializer.DeserializeTypeInfo(typeInfoData);
+                typeInfoData.Dispose();
+
+                // Read world count
+                var worldCount = *(int*)(ptr + position);
+                position += 4;
+
+                // Deserialize each world
+                for (var i = 0; i < worldCount; i++)
                 {
-                    UnsafeUtility.MemCpy(destPtr, worldData.GetUnsafePtr(), worldDataSize);
-                }
+                    var worldDataSize = *(int*)(ptr + position);
+                    position += 4;
 
-                WorldSerializer.Deserialize(worldDataArray, world);
-                worldData.Dispose();
+                    var worldDataArray = new byte[worldDataSize];
+                    fixed (byte* destPtr = worldDataArray)
+                        Buffer.MemoryCopy(ptr + position, destPtr, worldDataSize, worldDataSize);
+
+                    position += worldDataSize;
+                    WorldSerializer.Deserialize(worldDataArray, WorldManager.Worlds[i]);
+                }
             }
         }
     }
