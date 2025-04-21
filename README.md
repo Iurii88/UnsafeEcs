@@ -402,27 +402,58 @@ private struct ProcessBuffersJob : IJobParallelFor
 }
 ```
 
-### World Serialization & Deserialization
+# World Serialization & Deserialization
 
-UnsafeEcs supports full world serialization and deserialization in Burst jobs:
+UnsafeEcs supports full serialization and deserialization of all worlds and their data in Burst jobs through the `EcsSerializer` interface. This provides a simple yet powerful mechanism to save and restore your entire ECS state.
 
-```csharp
-// Serialize a world to byte array
-var worldBytes = WorldSerializer.Serialize(world);
-// Save to disk
+## Serialization API
 
-result:
-[Serialzation] Serialized 1 worlds (Total raw size: 84.88MB) in 48ms
-
-//compress serialized data if needed to decrease the size
-[Streaming] Data written to disk (Compressed: 3.68MB, Ratio: 4.3 %) 
-```
+The serialization system has been simplified with a centralized API that handles both serialization and deserialization of all worlds:
 
 ```csharp
-// Deserialize back into a world
-WorldSerializer.Deserialize(worldBytes, WorldManager.Worlds[0]);
-[World Data] Worlds deserialized in 167ms
+// Serialize all worlds to a single byte array
+var ecsData = EcsSerializer.Serialize();
+
+// Deserialize all worlds from the byte array
+// This will create any necessary worlds and restore all entity data
+EcsSerializer.Deserialize(ecsData);
 ```
+
+## Performance
+
+The serialization system is highly optimized for performance:
+
+```
+[Serialization] Serialized ECS data (Size: 84.88MB) in 76ms (1m entities with transform component)
+
+[ECS Data] ECS data deserialized in 154ms (all worlds and entities are created already)
+```
+
+## Data Compression
+
+The framework itself doesn't provide built-in compression, but implementing compression is highly recommended as it can dramatically reduce storage requirements:
+
+```csharp
+// Serialize all worlds
+var ecsData = EcsSerializer.Serialize();
+
+// Use your preferred compression library 
+// (not included in UnsafeEcs but strongly recommended)
+var compressedData = YourCompressionLibrary.Compress(ecsData);
+// Typical compression results: Original: 84.88MB → Compressed: 3.68MB (4.3% of original size)
+
+// Save compressed data
+File.WriteAllBytes("game_save.dat", compressedData);
+
+// Later, load and decompress
+var loadedData = File.ReadAllBytes("game_save.dat");
+var decompressedData = YourCompressionLibrary.Decompress(loadedData);
+
+// Deserialize all worlds
+EcsSerializer.Deserialize(decompressedData);
+```
+
+While UnsafeEcs doesn't include compression functionality, integrating a compression solution is strongly recommended as ECS data typically achieves excellent compression ratios (often 95-98% size reduction) due to its structured nature.
 
 ### Entity Migration Between Worlds
 
