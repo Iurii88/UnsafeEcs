@@ -1,4 +1,7 @@
-﻿using UnsafeEcs.Additions.Components;
+﻿using Unity.Burst;
+using Unity.Collections.LowLevel.Unsafe;
+using Unity.Jobs;
+using UnsafeEcs.Additions.Components;
 using UnsafeEcs.Additions.Groups;
 using UnsafeEcs.Core.Bootstrap.Attributes;
 using UnsafeEcs.Core.Entities;
@@ -19,10 +22,24 @@ namespace UnsafeEcs.Additions.Systems
 
         public override void OnUpdate()
         {
-            m_destroyQuery.ForEach((ref Entity entity) =>
+            
+            var entitiesToDestroy = m_destroyQuery.Fetch();
+            new DestroyJob
             {
-                entity.Destroy();
-            });
+                entitiesToDestroy = entitiesToDestroy
+            }.Schedule().Complete();
+        }
+        
+        [BurstCompile]
+        private struct DestroyJob : IJob
+        {
+            public UnsafeList<Entity> entitiesToDestroy;
+            
+            public void Execute()
+            {
+                foreach (var entity in entitiesToDestroy)
+                    entity.Destroy();
+            }
         }
     }
 }
