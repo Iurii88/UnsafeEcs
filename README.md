@@ -424,9 +424,9 @@ EcsSerializer.Deserialize(ecsData);
 The serialization system is highly optimized for performance:
 
 ```
-[Serialization] Serialized ECS data (Size: 84.88MB) in 76ms (1m entities with transform component)
+[Serialization] Serialized ECS data (Size: 84.88MB) in 41ms (1m entities with transform component)
 
-[ECS Data] ECS data deserialized in 154ms (all worlds and entities are created already)
+[ECS Data] ECS data deserialized in 35ms (all worlds and entities are created already)
 ```
 
 ## Data Compression
