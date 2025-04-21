@@ -5,8 +5,6 @@
 ![Unity](https://img.shields.io/badge/unity-compatible-brightgreen.svg)
 ![Performance](https://img.shields.io/badge/performance-high-success.svg)
 
-A high-performance Entity-Component-System (ECS) library written in unsafe C# with Burst support for Unity.
-
 > **Benchmark System**: 12th Gen Intel® Core™ i5-12600KF @ 3.70 GHz
 
 ## Introduction
