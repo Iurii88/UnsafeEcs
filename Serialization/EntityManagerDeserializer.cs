@@ -14,16 +14,16 @@ namespace UnsafeEcs.Serialization
         // Magic number for format verification
         private const int SerializationMagic = 0xEC51;
 
-        public static void Deserialize(NativeArray<byte> data, ref EntityManager entityManager)
+        public static void Deserialize(MemoryRegion memoryRegion, ref EntityManager entityManager)
         {
             fixed (EntityManager* localPtr = &entityManager)
             {
                 var deserializeJob = new DeserializeJob
                 {
                     manager = localPtr,
-                    data = data
+                    ptr = memoryRegion.ptr
                 };
-                deserializeJob.Run();
+                deserializeJob.Schedule().Complete();
             }
         }
 
@@ -31,12 +31,10 @@ namespace UnsafeEcs.Serialization
         private struct DeserializeJob : IJob
         {
             [NativeDisableUnsafePtrRestriction] public EntityManager* manager;
-
-            [ReadOnly] public NativeArray<byte> data;
+            [NativeDisableUnsafePtrRestriction] public byte* ptr;
 
             public void Execute()
             {
-                byte* ptr = (byte*)data.GetUnsafeReadOnlyPtr();
                 int position = 0;
 
                 // Read header - one field at a time

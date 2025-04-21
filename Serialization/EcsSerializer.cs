@@ -86,56 +86,45 @@ namespace UnsafeEcs.Serialization
             return output;
         }
 
-        public static void Deserialize(byte[] data)
+        public static void Deserialize(MemoryRegion memoryRegion)
         {
-            fixed (byte* ptr = data)
+            var ptr = memoryRegion.ptr;
+            int position = 0;
+
+            // Read magic number
+            int magic = *(int*)(ptr + position);
+            position += 4;
+
+            if (magic != MagicNumber)
+                throw new InvalidOperationException("Invalid data format");
+
+            // Read version
+            int version = *(int*)(ptr + position);
+            position += 4;
+
+            if (version != Version)
+                throw new InvalidOperationException($"Unsupported version: {version}");
+
+            // Read type info size
+            int typeInfoSize = *(int*)(ptr + position);
+            position += 4;
+            
+            // Deserialize type info
+            ComponentTypeSerializer.DeserializeTypeInfo(new MemoryRegion(ptr + position, typeInfoSize));
+            position += typeInfoSize;
+
+            // Read world count
+            var worldCount = *(int*)(ptr + position);
+            position += 4;
+
+            // Deserialize each world
+            for (var i = 0; i < worldCount; i++)
             {
-                int position = 0;
-
-                // Read magic number
-                int magic = *(int*)(ptr + position);
+                var worldDataSize = *(int*)(ptr + position);
                 position += 4;
 
-                if (magic != MagicNumber)
-                    throw new InvalidOperationException("Invalid data format");
-
-                // Read version
-                int version = *(int*)(ptr + position);
-                position += 4;
-
-                if (version != Version)
-                    throw new InvalidOperationException($"Unsupported version: {version}");
-
-                // Read type info size
-                int typeInfoSize = *(int*)(ptr + position);
-                position += 4;
-
-                // Extract type info data
-                var typeInfoData = new NativeArray<byte>(typeInfoSize, Allocator.Temp);
-                UnsafeUtility.MemCpy(typeInfoData.GetUnsafePtr(), ptr + position, typeInfoSize);
-                position += typeInfoSize;
-
-                // Deserialize type info
-                ComponentTypeSerializer.DeserializeTypeInfo(typeInfoData);
-                typeInfoData.Dispose();
-
-                // Read world count
-                var worldCount = *(int*)(ptr + position);
-                position += 4;
-
-                // Deserialize each world
-                for (var i = 0; i < worldCount; i++)
-                {
-                    var worldDataSize = *(int*)(ptr + position);
-                    position += 4;
-
-                    var worldDataArray = new byte[worldDataSize];
-                    fixed (byte* destPtr = worldDataArray)
-                        Buffer.MemoryCopy(ptr + position, destPtr, worldDataSize, worldDataSize);
-
-                    position += worldDataSize;
-                    WorldSerializer.Deserialize(worldDataArray, WorldManager.Worlds[i]);
-                }
+                WorldSerializer.Deserialize(new MemoryRegion(ptr + position, worldDataSize), WorldManager.Worlds[i]);
+                position += worldDataSize;
             }
         }
     }

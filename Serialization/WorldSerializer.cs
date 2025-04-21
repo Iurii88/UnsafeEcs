@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-using System.IO;
-using Unity.Collections;
+﻿using System.IO;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Worlds;
 
@@ -12,7 +10,7 @@ namespace UnsafeEcs.Serialization
         {
             // Serialize EntityManager first
             var entityManagerData = EntityManagerSerializer.Serialize(world.entityManagerWrapper);
-            
+
             // Calculate total size needed for world serialization
             var totalSize =
                 4 + // magic
@@ -62,59 +60,54 @@ namespace UnsafeEcs.Serialization
             return output;
         }
 
-        public static World Deserialize(byte[] data, World world)
+        public static World Deserialize(MemoryRegion memoryRegion, World world)
         {
-            fixed (byte* ptr = data)
-            {
-                int position = 0;
+            var ptr = memoryRegion.ptr;
+            int position = 0;
 
-                // Read magic
-                int magic = *(int*)(ptr + position);
-                position += 4;
+            // Read magic
+            int magic = *(int*)(ptr + position);
+            position += 4;
 
-                if (magic != 0x574C44) // "WLD" in hex
-                    throw new InvalidDataException("Invalid world data format");
+            if (magic != 0x574C44) // "WLD" in hex
+                throw new InvalidDataException("Invalid world data format");
 
-                // Read version
-                int version = *(int*)(ptr + position);
-                position += 4;
+            // Read version
+            int version = *(int*)(ptr + position);
+            position += 4;
 
-                if (version != 1)
-                    throw new InvalidDataException($"Unsupported world version: {version}");
+            if (version != 1)
+                throw new InvalidDataException($"Unsupported world version: {version}");
 
-                // Read world timing fields
-                float deltaTime = *(float*)(ptr + position);
-                position += 4;
+            // Read world timing fields
+            float deltaTime = *(float*)(ptr + position);
+            position += 4;
 
-                float elapsedDeltaTime = *(float*)(ptr + position);
-                position += 4;
+            float elapsedDeltaTime = *(float*)(ptr + position);
+            position += 4;
 
-                float fixedDeltaTime = *(float*)(ptr + position);
-                position += 4;
+            float fixedDeltaTime = *(float*)(ptr + position);
+            position += 4;
 
-                float elapsedFixedDeltaTime = *(float*)(ptr + position);
-                position += 4;
+            float elapsedFixedDeltaTime = *(float*)(ptr + position);
+            position += 4;
 
-                // Read entity manager data size
-                int entityManagerSize = *(int*)(ptr + position);
-                position += 4;
+            // Read entity manager data size
+            int entityManagerSize = *(int*)(ptr + position);
+            position += 4;
 
-                // Restore timing fields
-                world.deltaTime = deltaTime;
-                world.elapsedDeltaTime = elapsedDeltaTime;
-                world.fixedDeltaTime = fixedDeltaTime;
-                world.elapsedFixedDeltaTime = elapsedFixedDeltaTime;
+            // Restore timing fields
+            world.deltaTime = deltaTime;
+            world.elapsedDeltaTime = elapsedDeltaTime;
+            world.fixedDeltaTime = fixedDeltaTime;
+            world.elapsedFixedDeltaTime = elapsedFixedDeltaTime;
 
-                world.EntityManager.Clear();
-                var entityManagerData = new NativeArray<byte>(entityManagerSize, Allocator.TempJob);
-                UnsafeUtility.MemCpy(entityManagerData.GetUnsafePtr(), ptr + position, entityManagerSize);
-                
-                EntityManagerDeserializer.Deserialize(entityManagerData, ref world.EntityManager);
-                
-                entityManagerData.Dispose();
-                
-                return world;
-            }
+            world.EntityManager.Clear();
+
+            EntityManagerDeserializer.Deserialize(new MemoryRegion(ptr + position, entityManagerSize), ref world.EntityManager);
+            position += entityManagerSize;
+
+            return world;
         }
     }
 }

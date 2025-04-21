@@ -33,9 +33,9 @@ namespace UnsafeEcs.Serialization
         }
 
         [BurstCompile]
-        public static void DeserializeTypeInfo(NativeArray<byte> data)
+        public static void DeserializeTypeInfo(MemoryRegion memoryRegion)
         {
-            byte* ptr = (byte*)data.GetUnsafeReadOnlyPtr();
+            byte* ptr = memoryRegion.ptr;
 
             int count = *(int*)ptr;
             int position = 4;
