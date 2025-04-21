@@ -25,7 +25,7 @@ namespace UnsafeEcs.Core.Entities
             }
 
             if (chunk.length >= chunk.capacity)
-                chunk.Resize( math.max(4, chunk.capacity * 2));
+                chunk.Resize(math.max(4, chunk.capacity * 2));
 
             // Initialize the buffer
             chunk.InitializeBuffer(chunk.length);
@@ -232,6 +232,24 @@ namespace UnsafeEcs.Core.Entities
 
             var buffer = GetBuffer<T>(entity);
             return new ReadOnlyDynamicBuffer<T>(buffer);
+        }
+
+        public BufferArray<T> GetBufferArray<T>() where T : unmanaged, IBufferElement
+        {
+            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+
+            if (bufferChunks.TryGetValue(typeIndex, out var chunk) && chunk.ptr != null)
+            {
+                return new BufferArray<T>
+                {
+                    ptr = chunk.ptr,
+                    length = chunk.length,
+                    headerSize = chunk.headerSize,
+                    entityToIndex = chunk.entityToIndex
+                };
+            }
+
+            return default;
         }
     }
 }
