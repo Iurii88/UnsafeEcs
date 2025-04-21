@@ -14,30 +14,29 @@ namespace UnsafeEcs.Serialization
         // Magic number for format verification
         private const int SerializationMagic = 0xEC51;
 
-        public static NativeArray<byte> Serialize(ReferenceWrapper<EntityManager> managerWrapper, Allocator allocator = Allocator.TempJob)
+        public static byte[] Serialize(ReferenceWrapper<EntityManager> managerWrapper)
         {
             // Calculate total size needed
             var sizeCalculator = new UnsafeItem<int>(0, Allocator.TempJob);
-            var sizeJob = new SizeCalculationJob
+            new SizeCalculationJob
+                {
+                    manager = managerWrapper.ptr,
+                    sizeCalculator = sizeCalculator
+                }.Schedule()
+                .Complete();
+
+            var output = new byte[sizeCalculator.Value];
+
+            fixed (byte* ptr = output)
             {
-                manager = managerWrapper.ptr,
-                sizeCalculator = sizeCalculator
-            }.Schedule();
+                new SerializeJob
+                    {
+                        manager = managerWrapper.ptr,
+                        ptr = ptr
+                    }.Schedule()
+                    .Complete();
+            }
 
-            // Complete the size calculation job before allocating memory
-            sizeJob.Complete();
-
-            // Now we can safely access the calculated size
-            var output = new NativeArray<byte>(sizeCalculator.Value, allocator, NativeArrayOptions.UninitializedMemory);
-
-            // Schedule and run the serialization job
-            var serializeJob = new SerializeJob
-            {
-                manager = managerWrapper.ptr,
-                output = output
-            }.Schedule();
-
-            serializeJob.Complete();
             sizeCalculator.Dispose();
 
             return output;
@@ -118,7 +117,7 @@ namespace UnsafeEcs.Serialization
         private struct SerializeJob : IJob
         {
             [NativeDisableUnsafePtrRestriction] public EntityManager* manager;
-            [NativeDisableUnsafePtrRestriction] public NativeArray<byte> output;
+            [NativeDisableUnsafePtrRestriction] public byte* ptr;
 
             private static long ComputeTypeInfoHash()
             {
@@ -133,7 +132,6 @@ namespace UnsafeEcs.Serialization
 
             public void Execute()
             {
-                byte* ptr = (byte*)output.GetUnsafePtr();
                 int position = 0;
 
                 // Write header - separated fields for better clarity

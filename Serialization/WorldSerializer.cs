@@ -51,12 +51,12 @@ namespace UnsafeEcs.Serialization
                 position += 4;
 
                 // Write entity manager data
-                UnsafeUtility.MemCpy(ptr + position, entityManagerData.GetUnsafePtr(), entityManagerData.Length);
+                fixed (byte* srcPtr = entityManagerData)
+                    UnsafeUtility.MemCpy(ptr + position, srcPtr, entityManagerData.Length);
+                
                 position += entityManagerData.Length;
             }
-
-            entityManagerData.Dispose();
-
+            
             return output;
         }
 

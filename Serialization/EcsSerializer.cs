@@ -1,7 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
 using Unity.Burst;
-using Unity.Collections;
-using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Worlds;
 
 namespace UnsafeEcs.Serialization
@@ -12,19 +11,17 @@ namespace UnsafeEcs.Serialization
         private const int Version = 1;
 
         [BurstCompile]
-        public static NativeArray<byte> Serialize(Allocator allocator = Allocator.TempJob)
+        public static byte[] Serialize()
         {
             // First serialize component type info
-            var typeInfoData = ComponentTypeSerializer.SerializeTypeInfo(Allocator.Temp);
+            byte[] typeInfoData = ComponentTypeSerializer.SerializeTypeInfo();
 
             // Then serialize all worlds
-            var worldsData = new NativeList<NativeArray<byte>>(WorldManager.Worlds.Count, Allocator.Temp);
+            var worldsData = new List<byte[]>(WorldManager.Worlds.Count);
             foreach (var world in WorldManager.Worlds)
             {
-                var worldBytes = WorldSerializer.Serialize(world);
-                var nativeBytes = new NativeArray<byte>(worldBytes.Length, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
-                UnsafeUtility.MemCpy(nativeBytes.GetUnsafePtr(), UnsafeUtility.AddressOf(ref worldBytes[0]), worldBytes.Length);
-                worldsData.Add(nativeBytes);
+                byte[] worldBytes = WorldSerializer.Serialize(world);
+                worldsData.Add(worldBytes);
             }
 
             // Calculate total size needed
@@ -36,52 +33,44 @@ namespace UnsafeEcs.Serialization
                 4; // world count
 
             // Add sizes of all worlds
-            for (int i = 0; i < worldsData.Length; i++)
+            foreach (var worldBytes in worldsData)
             {
-                totalSize += 4 + worldsData[i].Length; // size + data for each world
+                totalSize += 4 + worldBytes.Length; // size + data for each world
             }
 
             // Allocate output array
-            var output = new NativeArray<byte>(totalSize, allocator, NativeArrayOptions.UninitializedMemory);
-            byte* ptr = (byte*)output.GetUnsafePtr();
+            var output = new byte[totalSize];
             int position = 0;
 
             // Write magic number
-            *(int*)(ptr + position) = MagicNumber;
+            Buffer.BlockCopy(BitConverter.GetBytes(MagicNumber), 0, output, position, 4);
             position += 4;
 
             // Write version
-            *(int*)(ptr + position) = Version;
+            Buffer.BlockCopy(BitConverter.GetBytes(Version), 0, output, position, 4);
             position += 4;
 
             // Write type info size
-            *(int*)(ptr + position) = typeInfoData.Length;
+            Buffer.BlockCopy(BitConverter.GetBytes(typeInfoData.Length), 0, output, position, 4);
             position += 4;
 
             // Write type info data
-            UnsafeUtility.MemCpy(ptr + position, typeInfoData.GetUnsafePtr(), typeInfoData.Length);
+            Buffer.BlockCopy(typeInfoData, 0, output, position, typeInfoData.Length);
             position += typeInfoData.Length;
 
             // Write world count
-            *(int*)(ptr + position) = worldsData.Length;
+            Buffer.BlockCopy(BitConverter.GetBytes(worldsData.Count), 0, output, position, 4);
             position += 4;
 
             // Write each world
-            for (int i = 0; i < worldsData.Length; i++)
+            foreach (var worldBytes in worldsData)
             {
-                var worldData = worldsData[i];
-                *(int*)(ptr + position) = worldData.Length;
+                Buffer.BlockCopy(BitConverter.GetBytes(worldBytes.Length), 0, output, position, 4);
                 position += 4;
 
-                UnsafeUtility.MemCpy(ptr + position, worldData.GetUnsafePtr(), worldData.Length);
-                position += worldData.Length;
-
-                worldData.Dispose();
+                Buffer.BlockCopy(worldBytes, 0, output, position, worldBytes.Length);
+                position += worldBytes.Length;
             }
-
-            // Cleanup
-            typeInfoData.Dispose();
-            worldsData.Dispose();
 
             return output;
         }
@@ -108,7 +97,7 @@ namespace UnsafeEcs.Serialization
             // Read type info size
             int typeInfoSize = *(int*)(ptr + position);
             position += 4;
-            
+
             // Deserialize type info
             ComponentTypeSerializer.DeserializeTypeInfo(new MemoryRegion(ptr + position, typeInfoSize));
             position += typeInfoSize;
