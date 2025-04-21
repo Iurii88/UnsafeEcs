@@ -38,6 +38,32 @@ Clone or download the repository and place it in your Unity project's Assets fol
 git clone git@github.com:Iurii88/UnsafeEcs.git Assets/Plugins/UnsafeEcs
 ```
 
+## Critical Note: Thread Safety
+
+### ⚠️ Important Thread Safety Considerations
+
+UnsafeEcs is fully compatible with Burst jobs and enables high-performance ECS operations in parallel contexts. However, it is **not thread-safe** for concurrent structural changes to the ECS architecture. This has important implications for your code:
+
+- ❌ **You cannot safely modify the EntityManager from multiple jobs in parallel**
+- ❌ **Concurrent create/delete entities or add/remove components operations will cause race conditions**
+- ❌ **Parallel structural changes lead to undefined behavior and data corruption**
+
+### 🔒 Safe Usage Patterns
+
+All structural changes (entity/component modifications) must be performed using one of these approaches:
+
+1. **Sequentially (single-threaded)** - Process structural changes on the main thread
+2. **From a single job** - Use IJob instead of IJobParallelFor for structural modifications
+3. **Isolate mutations** - Ensure only one thread can modify entities at any given time
+
+### ✅ What Remains Safe for Parallel Processing
+
+- **Component data access and modifications** - Reading/writing component values in parallel jobs
+- **Performance-critical iterations** - Processing component data with IJobParallelFor
+- **Query operations** - Fetching and filtering entities in parallel contexts
+
+This distinction is critical: you can transform data in parallel, but changes to the ECS structure itself must be properly isolated to avoid corruption of the entity management system.
+
 ## Getting Started
 
 ### World Initialization
@@ -179,7 +205,10 @@ public class CreateEntitiesSystem : SystemBase
             for (var i = 0; i < EntitiesCount; i++)
             {
                 var entity = entityManagerWrapper.Value.CreateEntity();
+                //any editing operations are available right in burst-job
                 entity.AddComponent(new Transform(float3.zero, quaternion.identity));
+                //entity.RemoveComponent<Transform>();
+                //entity.Destroy();
             }
         }
     }
