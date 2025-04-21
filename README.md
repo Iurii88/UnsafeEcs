@@ -58,7 +58,6 @@ All structural changes (entity/component modifications) must be performed using 
 
 - **Component data access and modifications** - Reading/writing component values in parallel jobs
 - **Performance-critical iterations** - Processing component data with IJobParallelFor
-- **Query operations** - Fetching and filtering entities in parallel contexts
 
 This distinction is critical: you can transform data in parallel, but changes to the ECS structure itself must be properly isolated to avoid corruption of the entity management system.
 
