@@ -37,7 +37,7 @@ namespace UnsafeEcs.Core.Worlds
             return world;
         }
 
-        public static void DestroyWorld(ref World world)
+        public static void DestroyWorld(World world)
         {
             for (var i = 0; i < Worlds.Count; i++)
             {
