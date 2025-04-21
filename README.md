@@ -283,7 +283,7 @@ public class ForEachMovementSystem : SystemBase
     
     public override void OnAwake()
     {
-        // Cache the query during initialization
+        // Cache the query during initialization, but it's also very fast to do it right in the update
         query = CreateQuery()
             .With<Transform>()
             .Without<Destroy>();
