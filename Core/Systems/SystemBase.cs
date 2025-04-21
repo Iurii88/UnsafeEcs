@@ -1,5 +1,6 @@
 using Unity.Jobs;
 using UnsafeEcs.Core.Components;
+using UnsafeEcs.Core.DynamicBuffers;
 using UnsafeEcs.Core.Entities;
 using UnsafeEcs.Core.Utils;
 using UnsafeEcs.Core.Worlds;
@@ -25,6 +26,11 @@ namespace UnsafeEcs.Core.Systems
         protected ComponentArray<T> GetComponentArray<T>() where T : unmanaged, IComponent
         {
             return world.EntityManager.GetComponentArray<T>();
+        }
+        
+        protected BufferArray<T> GetBufferArray<T>() where T : unmanaged, IBufferElement
+        {
+            return world.EntityManager.GetBufferArray<T>();
         }
     }
 }
