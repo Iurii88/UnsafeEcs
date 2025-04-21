@@ -68,28 +68,27 @@ public class Bootstrap
 
 This approach supports the following attributes for system ordering:
 
-- `UpdateAfterAttribute`: Specifies that a system should update after another system
+- `UpdateInWorldAttribute`: Assigns a system to a specific world
   ```csharp
-  [UpdateAfter(typeof(InitializationSystemGroup))]
-  public class MyLateSystem : SystemBase { ... }
+   [UpdateInWorld(0)]
+   public class SimulationSystemGroup : SystemGroup {}
   ```
-
-- `UpdateBeforeAttribute`: Specifies that a system should update before another system
-  ```csharp
-  [UpdateBefore(typeof(RenderingSystemGroup))]
-  public class MyEarlySystem : SystemBase { ... }
-  ```
-
 - `UpdateInGroupAttribute`: Assigns a system to a specific group
   ```csharp
   [UpdateInGroup(typeof(SimulationSystemGroup))]
-  public class PhysicsSystem : SystemBase { ... }
+  public class MyMiddleSystem : SystemBase { ... }
   ```
-
-- `UpdateInWorldAttribute`: Assigns a system to a specific world
+- `UpdateBeforeAttribute`: Specifies that a system should update before another system
   ```csharp
-  [UpdateInWorld(0)]
-  public class GameplaySystem : SystemBase { ... }
+  [UpdateInGroup(typeof(SimulationSystemGroup))]
+  [UpdateBefore(typeof(MyMiddleSystem))]
+  public class MyEarlySystem : SystemBase { ... }
+  ```
+- `UpdateAfterAttribute`: Specifies that a system should update after another system
+  ```csharp
+  [UpdateInGroup(typeof(SimulationSystemGroup))]
+  [UpdateAfter(typeof(MyMiddleSystem))]
+  public class MyLateSystem : SystemBase { ... }
   ```
 
 #### Manual Initialization
