@@ -111,8 +111,14 @@ namespace UnsafeEcs.Serialization
             {
                 var worldDataSize = *(int*)(ptr + position);
                 position += 4;
-
-                WorldSerializer.Deserialize(new MemoryRegion(ptr + position, worldDataSize), WorldManager.Worlds[i]);
+                
+                var world = WorldManager.Worlds[i];
+                foreach (var rootSystem in world.rootSystems)
+                    rootSystem.OnDestroy();
+                WorldSerializer.Deserialize(new MemoryRegion(ptr + position, worldDataSize), world);
+                foreach (var rootSystem in world.rootSystems)
+                    rootSystem.OnAwake();
+                
                 position += worldDataSize;
             }
         }

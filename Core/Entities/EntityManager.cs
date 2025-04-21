@@ -91,7 +91,7 @@ namespace UnsafeEcs.Core.Entities
             freeEntities.Clear();
             nextId.Value = 0;
             m_componentVersions.Clear();
-            m_globalVersions.Value = 0;
+            m_globalVersions.Value = 1;
             m_queryCache.Clear();
             m_queryVersionHashes.Clear();
         }

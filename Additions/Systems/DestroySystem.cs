@@ -22,7 +22,6 @@ namespace UnsafeEcs.Additions.Systems
 
         public override void OnUpdate()
         {
-            
             var entitiesToDestroy = m_destroyQuery.Fetch();
             new DestroyJob
             {

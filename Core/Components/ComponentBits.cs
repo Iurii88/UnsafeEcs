@@ -207,5 +207,19 @@ namespace UnsafeEcs.Core.Components
             part2 = 0;
             part3 = 0;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator ==(in ComponentBits left, in ComponentBits right) =>
+            left.part0 == right.part0 &&
+            left.part1 == right.part1 &&
+            left.part2 == right.part2 &&
+            left.part3 == right.part3;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool operator !=(in ComponentBits left, in ComponentBits right) =>
+            left.part0 != right.part0 ||
+            left.part1 != right.part1 ||
+            left.part2 != right.part2 ||
+            left.part3 != right.part3;
     }
 }
