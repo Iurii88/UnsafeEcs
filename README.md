@@ -45,7 +45,6 @@ UnsafeECS runs exceptionally well on mobile devices—exactly where you need max
 - 📉 **Low memory footprint**: Minimal overhead for resource-constrained devices
 - ⚡ **Efficient CPU usage**: Optimized for mobile processors
 - 🔋 **Battery-friendly**: Designed to minimize power consumption
-- 📊 **Auto-scaling**: Automatically adjusts workloads based on device capabilities
 
 ## Installation
 
