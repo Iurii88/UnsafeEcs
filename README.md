@@ -119,7 +119,7 @@ This approach supports the following attributes for system ordering:
 
 - `UpdateInWorldAttribute`: Assigns a system to a specific world
   ```csharp
-   [UpdateInWorld(0)]
+   [UpdateInWorld(0)] //use WorldBootstrap.AllWorldsIndex to add system to all worlds
    public class SimulationSystemGroup : SystemGroup {}
   ```
 - `UpdateInGroupAttribute`: Assigns a system to a specific group
