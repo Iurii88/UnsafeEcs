@@ -1,7 +1,4 @@
-﻿using System;
-using System.Runtime.CompilerServices;
-using Unity.Collections.LowLevel.Unsafe;
-using UnsafeEcs.Core.Components;
+﻿using UnsafeEcs.Core.Components;
 
 namespace UnsafeEcs.Core.Entities
 {
