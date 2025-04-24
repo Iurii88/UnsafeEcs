@@ -49,7 +49,7 @@ namespace UnsafeEcs.Serialization
 
                 // Verify type info matches
                 long currentHash = 0;
-                foreach (var kv in ComponentTypeManager.TypeToIndex.Data)
+                foreach (var kv in TypeManager.TypeToIndex.Data)
                 {
                     currentHash = currentHash * 31 + kv.Key;
                 }

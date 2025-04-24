@@ -11,7 +11,7 @@ namespace UnsafeEcs.Core.Worlds
 
         public static void Initialize()
         {
-            ComponentTypeManager.Initialize();
+            TypeManager.Initialize();
             Worlds.Clear();
 
             var go = new GameObject();
@@ -22,7 +22,7 @@ namespace UnsafeEcs.Core.Worlds
         
         public static void InitializeForTests()
         {
-            ComponentTypeManager.Initialize();
+            TypeManager.Initialize();
             Worlds.Clear();
 
             var go = new GameObject();
@@ -78,7 +78,7 @@ namespace UnsafeEcs.Core.Worlds
         {
             foreach (var world in Worlds)
                 world.Dispose();
-            ComponentTypeManager.Dispose();
+            TypeManager.Dispose();
         }
     }
 

@@ -12,7 +12,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
         public void With_SingleComponent_AddsToWithMask()
         {
             var query = CreateTestQuery().With<ComponentA>();
-            Assert.IsTrue(query.withMask.HasComponent(ComponentTypeManager.GetTypeIndex<ComponentA>()));
+            Assert.IsTrue(query.withMask.HasComponent(TypeManager.GetComponentTypeIndex<ComponentA>()));
         }
 
         [Test]
@@ -21,23 +21,23 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
             var query = CreateTestQuery()
                 .With<ComponentA, ComponentB, ComponentC>();
                 
-            Assert.IsTrue(query.withMask.HasComponent(ComponentTypeManager.GetTypeIndex<ComponentA>()));
-            Assert.IsTrue(query.withMask.HasComponent(ComponentTypeManager.GetTypeIndex<ComponentB>()));
-            Assert.IsTrue(query.withMask.HasComponent(ComponentTypeManager.GetTypeIndex<ComponentC>()));
+            Assert.IsTrue(query.withMask.HasComponent(TypeManager.GetComponentTypeIndex<ComponentA>()));
+            Assert.IsTrue(query.withMask.HasComponent(TypeManager.GetComponentTypeIndex<ComponentB>()));
+            Assert.IsTrue(query.withMask.HasComponent(TypeManager.GetComponentTypeIndex<ComponentC>()));
         }
 
         [Test]
         public void Without_SingleComponent_AddsToWithoutMask()
         {
             var query = CreateTestQuery().Without<ComponentA>();
-            Assert.IsTrue(query.withoutMask.HasComponent(ComponentTypeManager.GetTypeIndex<ComponentA>()));
+            Assert.IsTrue(query.withoutMask.HasComponent(TypeManager.GetComponentTypeIndex<ComponentA>()));
         }
 
         [Test]
         public void WithAny_SingleComponent_AddsToWithAnyMask()
         {
             var query = CreateTestQuery().WithAny<ComponentA>();
-            Assert.IsTrue(query.withAnyMask.HasComponent(ComponentTypeManager.GetTypeIndex<ComponentA>()));
+            Assert.IsTrue(query.withAnyMask.HasComponent(TypeManager.GetComponentTypeIndex<ComponentA>()));
         }
 
         [Test]

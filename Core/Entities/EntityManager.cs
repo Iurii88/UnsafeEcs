@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Components;
@@ -139,6 +140,158 @@ namespace UnsafeEcs.Core.Entities
 
                 return entity;
             }
+        }
+
+        public UnsafeList<Entity> CreateEntities(EntityArchetype archetype, int count, Allocator allocator)
+        {
+            if (count <= 0)
+                throw new ArgumentException("Count must be greater than zero", nameof(count));
+
+            // Allocate memory for the new entities
+            var result = new UnsafeList<Entity>(count, allocator);
+            result.Length = count;
+
+            // Calculate starting entity ID
+            int startId = nextId.Value;
+            nextId.Value += count;
+            int endId = startId + count;
+
+            // Ensure capacity in our entity lists - expand once in advance
+            int requiredCapacity = endId;
+            if (entities.Capacity < requiredCapacity)
+            {
+                int newCapacity = Math.Max(entities.Capacity * 2, requiredCapacity);
+                entities.Resize(newCapacity);
+                entityArchetypes.Resize(newCapacity);
+                deadEntities.Resize(newCapacity);
+            }
+
+            // Cache manager pointer - call only once
+            var managerPtr = GetManagerPtr();
+
+            // Prepare all component chunks in advance
+            // First pass to resize all chunks to minimize hash map accesses
+            foreach (var typeIndex in archetype.componentBits)
+            {
+                if (!TypeManager.IsBufferType(typeIndex))
+                {
+                    if (componentChunks.TryGetValue(typeIndex, out var chunk))
+                    {
+                        int requiredChunkCapacity = chunk.length + count;
+                        if (chunk.capacity < requiredChunkCapacity)
+                        {
+                            chunk.Resize(Math.Max(chunk.capacity * 2, requiredChunkCapacity));
+                            componentChunks[typeIndex] = chunk;
+                        }
+                    }
+                    else
+                    {
+                        var size = TypeManager.GetTypeSizeByIndex(typeIndex);
+                        var initialCapacity = Math.Max(InitialEntityCapacity, count); // Create with adequate capacity
+                        chunk = new ComponentChunk(size, initialCapacity);
+                        componentChunks[typeIndex] = chunk;
+                    }
+                }
+                else
+                {
+                    if (bufferChunks.TryGetValue(typeIndex, out var bufferChunk))
+                    {
+                        int requiredBufferCapacity = bufferChunk.length + count;
+                        if (bufferChunk.capacity < requiredBufferCapacity)
+                        {
+                            bufferChunk.Resize(Math.Max(bufferChunk.capacity * 2, requiredBufferCapacity));
+                            bufferChunks[typeIndex] = bufferChunk;
+                        }
+                    }
+                    else
+                    {
+                        var elementSize = TypeManager.GetTypeSizeByIndex(typeIndex);
+                        int initialCapacity = Math.Max(InitialEntityCapacity, count); // Create with adequate capacity
+                        bufferChunk = new BufferComponentChunk(elementSize, initialCapacity);
+                        bufferChunks[typeIndex] = bufferChunk;
+                    }
+                }
+            }
+
+
+            // Create all entities in a single pass
+            for (int i = 0; i < count; i++)
+            {
+                int entityId = startId + i;
+
+                var entity = new Entity
+                {
+                    id = entityId,
+                    version = 1,
+                    managerPtr = managerPtr
+                };
+
+                entities.Ptr[entityId] = entity;
+                entityArchetypes.Ptr[entityId] = archetype;
+                deadEntities.Ptr[entityId] = false;
+                result.Ptr[i] = entity;
+            }
+
+
+            // Process component chunks in batch for all entities
+            foreach (var typeIndex in archetype.componentBits)
+            {
+                if (!TypeManager.IsBufferType(typeIndex))
+                {
+                    var chunk = componentChunks[typeIndex]; // Only retrieve from dictionary once
+
+                    // Prepare indices for batch addition
+                    int startIndexInChunk = chunk.length;
+
+                    // Batch add all entities
+                    for (int i = 0; i < count; i++)
+                    {
+                        int entityId = startId + i;
+                        int indexInChunk = startIndexInChunk + i;
+
+                        chunk.entityToIndex.Add(entityId, indexInChunk);
+                        chunk.indexToEntity.Add(indexInChunk, entityId);
+                    }
+
+                    // Update chunk length after adding all elements
+                    chunk.length += count;
+
+                    // Write the updated chunk back to the dictionary
+                    componentChunks[typeIndex] = chunk;
+
+                    // Increment component version once for the entire batch
+                    IncrementComponentVersion(typeIndex);
+                }
+                else
+                {
+                    var bufferChunk = bufferChunks[typeIndex]; // Only retrieve from dictionary once
+
+                    // Prepare indices for batch addition
+                    int startIndexInChunk = bufferChunk.length;
+
+                    // Batch add all entities
+                    for (int i = 0; i < count; i++)
+                    {
+                        int entityId = startId + i;
+                        int indexInChunk = startIndexInChunk + i;
+
+                        bufferChunk.InitializeBuffer(indexInChunk);
+                        bufferChunk.entityToIndex.Add(entityId, indexInChunk);
+                        bufferChunk.indexToEntity.Add(indexInChunk, entityId);
+                    }
+
+                    // Update chunk length after adding all elements
+                    bufferChunk.length += count;
+
+                    // Write the updated chunk back to the dictionary
+                    bufferChunks[typeIndex] = bufferChunk;
+
+                    // Increment component version once for the entire batch
+                    IncrementComponentVersion(typeIndex);
+                }
+            }
+
+            return result;
         }
 
         private EntityManager* GetManagerPtr()

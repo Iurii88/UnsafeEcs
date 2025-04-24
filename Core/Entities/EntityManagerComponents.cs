@@ -17,7 +17,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             archetype.componentBits.SetComponent(typeIndex);
 
@@ -46,7 +46,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             archetype.RemoveComponent(typeIndex);
 
@@ -64,7 +64,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
             if (!componentChunks.TryGetValue(typeIndex, out var chunk) ||
                 !chunk.entityToIndex.TryGetValue(entity.id, out var index))
@@ -83,7 +83,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
             if (!componentChunks.TryGetValue(typeIndex, out var chunk) ||
                 !chunk.entityToIndex.TryGetValue(entity.id, out var index))
@@ -98,7 +98,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 return false;
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
             return componentChunks.TryGetValue(typeIndex, out var chunk) &&
                    chunk.ptr != null &&
                    chunk.entityToIndex.ContainsKey(entity.id);
@@ -112,7 +112,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 return false;
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
             if (!componentChunks.TryGetValue(typeIndex, out var chunk) ||
                 !chunk.entityToIndex.TryGetValue(entity.id, out var index))
@@ -173,7 +173,7 @@ namespace UnsafeEcs.Core.Entities
 
         public ComponentArray<T> GetComponentArray<T>() where T : unmanaged, IComponent
         {
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
             if (componentChunks.TryGetValue(typeIndex, out var chunk) && chunk.ptr != null)
             {

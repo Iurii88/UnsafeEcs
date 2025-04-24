@@ -17,7 +17,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
             buffer.Add(new BufferElement { value = 42 });
 
             var executed = false;
-            var query = CreateTestQuery().With<BufferElement>();
+            var query = CreateTestQuery().WithBuffer<BufferElement>();
             query.ForEach((ref Entity e, DynamicBuffer<BufferElement> b) =>
             {
                 executed = true;
@@ -37,7 +37,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
             buffer.Add(new BufferElement { value = 100 });
 
             var executed = false;
-            var query = CreateTestQuery().With<ComponentA, BufferElement>();
+            var query = CreateTestQuery().With<ComponentA>().WithBuffer<BufferElement>();
             query.ForEach((ref Entity e, ref ComponentA _, DynamicBuffer<BufferElement> b) =>
             {
                 executed = true;
@@ -57,7 +57,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
             // since we only have one test buffer type defined
 
             _ = CreateEntityWithComponents(typeof(BufferElement));
-            var query = CreateTestQuery().With<BufferElement>();
+            var query = CreateTestQuery().WithBuffer<BufferElement>();
 
             Assert.DoesNotThrow(() =>
             {
@@ -79,7 +79,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
 
             var executed = false;
             var query = CreateTestQuery()
-                .With<ComponentA, ComponentB, BufferElement>();
+                .With<ComponentA, ComponentB>().WithBuffer<BufferElement, BufferElement>();
 
             query.ForEach((ref Entity e, ref ComponentA _, ref ComponentB _,
                 DynamicBuffer<BufferElement> buf) =>

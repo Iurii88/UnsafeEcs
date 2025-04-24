@@ -1,6 +1,6 @@
 ﻿namespace UnsafeEcs.Core.Components
 {
-    public interface IBufferElement : IComponent
+    public interface IBufferElement
     {
         
     }

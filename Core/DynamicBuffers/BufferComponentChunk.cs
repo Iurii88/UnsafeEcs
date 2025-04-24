@@ -1,11 +1,10 @@
 ﻿using System;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using UnsafeEcs.Core.Entities;
 
 namespace UnsafeEcs.Core.DynamicBuffers
 {
- public unsafe struct BufferComponentChunk : IDisposable
+    public unsafe struct BufferComponentChunk : IDisposable
     {
         public byte* ptr;
         public int length;
@@ -21,13 +20,13 @@ namespace UnsafeEcs.Core.DynamicBuffers
             headerSize = UnsafeUtility.SizeOf<BufferHeader>();
             capacity = initialCapacity;
             length = 0;
-            
+
             // Allocate memory for buffer headers
             ptr = (byte*)UnsafeUtility.Malloc(
-                capacity * headerSize, 
-                UnsafeUtility.AlignOf<BufferHeader>(), 
+                capacity * headerSize,
+                UnsafeUtility.AlignOf<BufferHeader>(),
                 Allocator.Persistent);
-            
+
             entityToIndex = new UnsafeHashMap<int, int>(initialCapacity, Allocator.Persistent);
             indexToEntity = new UnsafeHashMap<int, int>(initialCapacity, Allocator.Persistent);
         }
@@ -55,7 +54,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
             indexToEntity.Dispose();
         }
 
-        
+
         public void Resize(int newCapacity)
         {
             if (newCapacity <= capacity) return;
@@ -72,7 +71,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
         public void InitializeBuffer(int index, int initialBufferCapacity = 8)
         {
             var header = (BufferHeader*)(ptr + index * headerSize);
-            
+
             header->length = 0;
             header->capacity = initialBufferCapacity;
             header->pointer = (byte*)UnsafeUtility.Malloc(

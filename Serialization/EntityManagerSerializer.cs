@@ -122,7 +122,7 @@ namespace UnsafeEcs.Serialization
             private static long ComputeTypeInfoHash()
             {
                 long hash = 0;
-                foreach (var kv in ComponentTypeManager.TypeToIndex.Data)
+                foreach (var kv in TypeManager.TypeToIndex.Data)
                 {
                     hash = hash * 31 + kv.Key;
                 }

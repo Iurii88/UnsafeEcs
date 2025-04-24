@@ -14,7 +14,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetBufferTypeIndex<T>();
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             archetype.componentBits.SetComponent(typeIndex);
 
@@ -56,7 +56,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             if (!bufferChunks.TryGetValue(typeIndex, out var chunk))
                 throw new InvalidOperationException($"Entity does not have buffer component of type {typeof(T).Name}");
@@ -73,7 +73,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             archetype.RemoveComponent(typeIndex);
@@ -122,7 +122,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 return false;
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetBufferTypeIndex<T>();
             return bufferChunks.TryGetValue(typeIndex, out var chunk) &&
                    chunk.ptr != null &&
                    chunk.entityToIndex.ContainsKey(entity.id);
@@ -154,7 +154,7 @@ namespace UnsafeEcs.Core.Entities
             if (!IsEntityAlive(entity))
                 return false;
 
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             if (!bufferChunks.TryGetValue(typeIndex, out var chunk) ||
                 !chunk.entityToIndex.TryGetValue(entity.id, out var index))
@@ -186,7 +186,7 @@ namespace UnsafeEcs.Core.Entities
             var buffer = GetOrCreateBuffer<T>(entity);
             buffer.Clear();
             buffer.CopyFrom(data);
-            IncrementComponentVersion(ComponentTypeManager.GetTypeIndex<T>());
+            IncrementComponentVersion(TypeManager.GetBufferTypeIndex<T>());
             return buffer;
         }
 
@@ -206,7 +206,7 @@ namespace UnsafeEcs.Core.Entities
                 buffer.AddRange(ptr, data.Length);
             }
 
-            IncrementComponentVersion(ComponentTypeManager.GetTypeIndex<T>());
+            IncrementComponentVersion(TypeManager.GetBufferTypeIndex<T>());
             return buffer;
         }
 
@@ -220,7 +220,7 @@ namespace UnsafeEcs.Core.Entities
                 return false;
 
             buffer.Clear();
-            IncrementComponentVersion(ComponentTypeManager.GetTypeIndex<T>());
+            IncrementComponentVersion(TypeManager.GetBufferTypeIndex<T>());
             return true;
         }
 
@@ -236,7 +236,7 @@ namespace UnsafeEcs.Core.Entities
 
         public BufferArray<T> GetBufferArray<T>() where T : unmanaged, IBufferElement
         {
-            var typeIndex = ComponentTypeManager.GetTypeIndex<T>();
+            var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             if (bufferChunks.TryGetValue(typeIndex, out var chunk) && chunk.ptr != null)
             {

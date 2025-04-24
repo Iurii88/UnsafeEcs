@@ -14,7 +14,7 @@ namespace UnsafeEcs.Serialization
         public static byte[] Serialize()
         {
             // First serialize component type info
-            byte[] typeInfoData = ComponentTypeSerializer.SerializeTypeInfo();
+            byte[] typeInfoData = TypeManagerSerializer.SerializeTypeInfo();
 
             // Then serialize all worlds
             var worldsData = new List<byte[]>(WorldManager.Worlds.Count);
@@ -99,7 +99,7 @@ namespace UnsafeEcs.Serialization
             position += 4;
 
             // Deserialize type info
-            ComponentTypeSerializer.DeserializeTypeInfo(new MemoryRegion(ptr + position, typeInfoSize));
+            TypeManagerSerializer.DeserializeTypeInfo(new MemoryRegion(ptr + position, typeInfoSize));
             position += typeInfoSize;
 
             // Read world count
