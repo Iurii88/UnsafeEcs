@@ -9,6 +9,11 @@ namespace UnsafeEcs.Core.Entities
             managerPtr->AddComponent(this, component);
         }
 
+        public readonly void AddComponent<T>() where T : unmanaged, IComponent
+        {
+            managerPtr->AddComponent<T>(this);
+        }
+
         public readonly void RemoveComponent<T>() where T : unmanaged, IComponent
         {
             managerPtr->RemoveComponent<T>(this);
@@ -17,6 +22,11 @@ namespace UnsafeEcs.Core.Entities
         public readonly void SetComponent<T>(T component) where T : unmanaged, IComponent
         {
             managerPtr->SetComponent(this, component);
+        }
+
+        public readonly void SetComponent<T>() where T : unmanaged, IComponent
+        {
+            managerPtr->SetComponent<T>(this);
         }
 
         public readonly ref T GetComponent<T>() where T : unmanaged, IComponent
@@ -33,14 +43,14 @@ namespace UnsafeEcs.Core.Entities
         {
             return managerPtr->TryGetComponent(this, out component);
         }
-        
+
         public readonly ref T GetOrAddComponent<T>() where T : unmanaged, IComponent
         {
             if (!HasComponent<T>())
                 AddComponent(new T());
             return ref GetComponent<T>();
         }
-        
+
         public readonly ref T GetOrAddComponent<T>(T defaultValue) where T : unmanaged, IComponent
         {
             if (!HasComponent<T>())

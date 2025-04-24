@@ -28,7 +28,7 @@ namespace UnsafeEcs.Core.Entities
             }
 
             if (chunk.length >= chunk.capacity)
-                chunk.Resize( math.max(4, chunk.capacity * 2));
+                chunk.Resize(math.max(4, chunk.capacity * 2));
 
             var dstPtr = (byte*)chunk.ptr + chunk.length * chunk.componentSize;
             UnsafeUtility.CopyStructureToPtr(ref component, dstPtr);
@@ -53,7 +53,7 @@ namespace UnsafeEcs.Core.Entities
             RemoveComponentInternal(entity, typeIndex);
             IncrementComponentVersion(typeIndex);
         }
-        
+
         public void SetComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
             SetComponent(entity, new T());
@@ -196,6 +196,7 @@ namespace UnsafeEcs.Core.Entities
                 RemoveComponentInternal(entity, componentIndex);
                 IncrementComponentVersion(componentIndex);
             }
+
             archetype.componentBits.Clear();
         }
     }
