@@ -194,9 +194,18 @@ UnsafeEcs features a high-performance query system that:
 
 ## Examples
 
-### Creating Entities
+### Creating Entities One by One
 
 Here's an example of creating 1 million entities with a Transform component:
+
+```csharp
+public struct Transform : IComponent
+{
+    public float3 position;
+    public quaternion rotation;
+    public float3 scale;
+}
+```
 
 ```csharp
 [UpdateInGroup(typeof(InitializationSystemGroup))]
@@ -241,6 +250,68 @@ public class CreateEntitiesSystem : SystemBase
 **Performance Results:**
 ```
 Created 1000000, ticks:2203989, 220 ms
+```
+
+### Bulk Entity Creation (Recommended)
+
+For significantly improved performance when creating many entities of the same archetype, use the bulk creation method:
+
+```csharp
+[UpdateInGroup(typeof(InitializationSystemGroup))]
+public class BulkCreationSystem : SystemBase
+{
+    private const int EntityCount = 1000000;
+
+    public override void OnAwake()
+    {
+        base.OnAwake();
+        
+        var jobStopwatch = Stopwatch.StartNew();
+
+        new CreateEntitiesBulkJob
+        {
+            entityManagerWrapper = world.entityManagerWrapper,
+            entityCount = EntityCount
+        }.Schedule().Complete();
+
+        jobStopwatch.Stop();
+        Debug.Log($"Created {EntityCount}, ticks:{jobStopwatch.ElapsedTicks}, {jobStopwatch.ElapsedMilliseconds} ms");
+    }
+    
+    [BurstCompile]
+    private struct CreateEntitiesBulkJob : IJob
+    {
+        public ReferenceWrapper<EntityManager> entityManagerWrapper;
+        public int entityCount;
+
+        public void Execute()
+        {
+            var unitArchetype = new EntityArchetypeBuilder()
+                .With<Transform>()
+                .Build();
+
+            var entities = entityManagerWrapper.Value.CreateEntities(unitArchetype, entityCount, Allocator.TempJob);
+            var transforms = entityManagerWrapper.Value.GetComponentArray<Transform>();
+
+            for (var i = 0; i < entities.Length; i++)
+            {
+                var entity = entities[i];
+
+                ref var transform = ref transforms.Get(entity);
+                transform.position = float3.zero;
+                transform.rotation = quaternion.identity;
+                transform.scale = 1f;
+            }
+
+            entities.Dispose();
+        }
+    }
+}
+```
+
+**Performance Results:**
+```
+Created 1000000, ticks:330877, 33 ms
 ```
 
 ### Updating Entities
@@ -343,6 +414,17 @@ public struct BufferElement : IBufferElement
 ```
 
 The buffer element must implement the `IBufferElement` interface, which marks it as a valid buffer type for the ECS system.
+
+### Creating Archetypes with Buffers
+
+When defining an archetype that includes buffers, use the `WithBuffer<>()` method:
+
+```csharp
+var unitArchetype = new EntityArchetypeBuilder()
+    .With<Transform, Unit, Renderable>()
+    .WithBuffer<BufferElement>()
+    .Build();
+```
 
 ### Adding Buffers to Entities
 
