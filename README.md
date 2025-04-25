@@ -364,7 +364,7 @@ public class MovementSystem : SystemBase
 
 **Performance Results:**
 ```
-Entities: 1000000, ticks:16350, 1 ms
+Entities: 1000000, ticks:14848, 1 ms
 ```
 
 ### ForEach Processing
