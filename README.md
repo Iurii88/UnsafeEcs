@@ -249,7 +249,7 @@ public class CreateEntitiesSystem : SystemBase
 
 **Performance Results:**
 ```
-Created 1000000, ticks:2203989, 220 ms
+Created 1000000, ticks:2000649, 200 ms
 ```
 
 ### Bulk Entity Creation (Recommended)
@@ -311,7 +311,7 @@ public class BulkCreationSystem : SystemBase
 
 **Performance Results:**
 ```
-Created 1000000, ticks:330877, 33 ms
+Created 1000000, ticks:230481, 22 ms
 ```
 
 ### Updating Entities
@@ -532,7 +532,7 @@ The serialization system achieves exceptional performance even with massive enti
 
 | Entity Count | Components | Data Size | Serialization | Deserialization |
 |-------------|-----------|----------|--------------|----------------|
-| 1,000,000   | Transform | 84.88MB  | 41ms         | 35ms           |
+| 1,000,000   | Transform | 88.88MB  | 40ms         | 15ms           |
 
 ### Compression Integration
 
