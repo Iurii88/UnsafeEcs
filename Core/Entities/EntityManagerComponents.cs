@@ -7,11 +7,15 @@ namespace UnsafeEcs.Core.Entities
 {
     public unsafe partial struct EntityManager
     {
+        // Add component without providing a value (default constructed)
         public void AddComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            AddComponent(entity, new T());
+            // Create default instance of T
+            var component = default(T);
+            AddComponent(entity, component);
         }
 
+        // Add component with specific value
         public void AddComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
             if (!IsEntityAlive(entity))
@@ -27,20 +31,21 @@ namespace UnsafeEcs.Core.Entities
                 chunk = new ComponentChunk(size, InitialEntityCapacity);
             }
 
+            // Ensure we have enough capacity
             if (chunk.length >= chunk.capacity)
                 chunk.Resize(math.max(4, chunk.capacity * 2));
 
-            var dstPtr = (byte*)chunk.ptr + chunk.length * chunk.componentSize;
-            UnsafeUtility.CopyStructureToPtr(ref component, dstPtr);
-            chunk.entityToIndex.Add(entity.id, chunk.length);
-            chunk.indexToEntity.Add(chunk.length, entity.id);
+            // Ensure we can store this entity ID
+            chunk.EnsureEntityCapacity(entity.id);
 
-            chunk.length++;
+            // Add component using our direct indexing method
+            chunk.Add(entity.id, UnsafeUtility.AddressOf(ref component));
 
             componentChunks[typeIndex] = chunk;
             IncrementComponentVersion(typeIndex);
         }
 
+        // Remove component of type T from entity
         public void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
             if (!IsEntityAlive(entity))
@@ -54,9 +59,128 @@ namespace UnsafeEcs.Core.Entities
             IncrementComponentVersion(typeIndex);
         }
 
+        // Helper method to remove a component by type index
+        private void RemoveComponentInternal(Entity entity, int typeIndex)
+        {
+            if (!componentChunks.TryGetValue(typeIndex, out var chunk))
+                return;
+
+            // Use our direct indexing method to remove component
+            if (chunk.Remove(entity.id))
+            {
+                componentChunks[typeIndex] = chunk;
+            }
+        }
+
+        // GetComponent implementation for the new ComponentChunk design
+        public ref T GetComponent<T>(Entity entity) where T : unmanaged, IComponent
+        {
+            if (!IsEntityAlive(entity))
+                throw new InvalidOperationException($"Entity {entity} is not alive");
+
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
+
+            if (!componentChunks.TryGetValue(typeIndex, out var chunk))
+                throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
+
+            void* componentPtr = chunk.GetComponentPtr(entity.id);
+            if (componentPtr == null)
+                throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
+
+            return ref UnsafeUtility.AsRef<T>(componentPtr);
+        }
+
+        // Get or add a component with default initialization
+        public ref T GetOrAddComponent<T>(Entity entity) where T : unmanaged, IComponent
+        {
+            if (!IsEntityAlive(entity))
+                throw new InvalidOperationException($"Entity {entity} is not alive");
+
+            // Check if entity already has this component
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
+
+            if (componentChunks.TryGetValue(typeIndex, out var chunk) &&
+                entity.id <= chunk.maxEntityId &&
+                chunk.componentIndices[entity.id] >= 0)
+            {
+                // Component exists, return reference
+                int index = chunk.componentIndices[entity.id];
+                var ptr = (byte*)chunk.ptr + index * chunk.componentSize;
+                return ref UnsafeUtility.AsRef<T>(ptr);
+            }
+
+            // Component doesn't exist, add it with default value
+            var component = default(T);
+            AddComponent(entity, component);
+
+            // Get reference to the newly added component
+            return ref GetComponent<T>(entity);
+        }
+
+        // Get or add a component with custom initialization
+        public ref T GetOrAddComponent<T>(Entity entity, T defaultValue) where T : unmanaged, IComponent
+        {
+            if (!IsEntityAlive(entity))
+                throw new InvalidOperationException($"Entity {entity} is not alive");
+
+            // Check if entity already has this component
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
+
+            if (componentChunks.TryGetValue(typeIndex, out var chunk) &&
+                entity.id <= chunk.maxEntityId &&
+                chunk.componentIndices[entity.id] >= 0)
+            {
+                // Component exists, return reference
+                int index = chunk.componentIndices[entity.id];
+                var ptr = (byte*)chunk.ptr + index * chunk.componentSize;
+                return ref UnsafeUtility.AsRef<T>(ptr);
+            }
+
+            // Component doesn't exist, add it with provided value
+            AddComponent(entity, defaultValue);
+
+            // Get reference to the newly added component
+            return ref GetComponent<T>(entity);
+        }
+
+        // HasComponent implementation for the new ComponentChunk design
+        public bool HasComponent<T>(Entity entity) where T : unmanaged, IComponent
+        {
+            if (!IsEntityAlive(entity))
+                return false;
+
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
+
+            return componentChunks.TryGetValue(typeIndex, out var chunk) &&
+                   chunk.ptr != null &&
+                   chunk.HasComponent(entity.id);
+        }
+
+        // TryGetComponent implementation for the new ComponentChunk design
+        public bool TryGetComponent<T>(Entity entity, out T component) where T : unmanaged, IComponent
+        {
+            component = default;
+
+            if (!IsEntityAlive(entity))
+                return false;
+
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
+
+            if (!componentChunks.TryGetValue(typeIndex, out var chunk))
+                return false;
+
+            void* componentPtr = chunk.GetComponentPtr(entity.id);
+            if (componentPtr == null)
+                return false;
+
+            component = UnsafeUtility.AsRef<T>(componentPtr);
+            return true;
+        }
+
+        // SetComponent implementation for the new ComponentChunk design
         public void SetComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-            SetComponent(entity, new T());
+            SetComponent<T>(entity, default);
         }
 
         public void SetComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
@@ -67,110 +191,18 @@ namespace UnsafeEcs.Core.Entities
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
             if (!componentChunks.TryGetValue(typeIndex, out var chunk) ||
-                !chunk.entityToIndex.TryGetValue(entity.id, out var index))
+                !chunk.HasComponent(entity.id))
             {
                 AddComponent(entity, component);
                 return;
             }
 
-            var ptr = (byte*)chunk.ptr + index * chunk.componentSize;
-            UnsafeUtility.CopyStructureToPtr(ref component, ptr);
+            void* componentPtr = chunk.GetComponentPtr(entity.id);
+            UnsafeUtility.CopyStructureToPtr(ref component, componentPtr);
             IncrementComponentVersion(typeIndex);
         }
 
-        public ref T GetComponent<T>(Entity entity) where T : unmanaged, IComponent
-        {
-            if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
-
-            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
-
-            if (!componentChunks.TryGetValue(typeIndex, out var chunk) ||
-                !chunk.entityToIndex.TryGetValue(entity.id, out var index))
-                throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
-
-            var ptr = (byte*)chunk.ptr + index * chunk.componentSize;
-            return ref UnsafeUtility.AsRef<T>(ptr);
-        }
-
-        public bool HasComponent<T>(Entity entity) where T : unmanaged, IComponent
-        {
-            if (!IsEntityAlive(entity))
-                return false;
-
-            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
-            return componentChunks.TryGetValue(typeIndex, out var chunk) &&
-                   chunk.ptr != null &&
-                   chunk.entityToIndex.ContainsKey(entity.id);
-        }
-
-        //makes a copy!
-        public bool TryGetComponent<T>(Entity entity, out T component) where T : unmanaged, IComponent
-        {
-            component = default;
-
-            if (!IsEntityAlive(entity))
-                return false;
-
-            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
-
-            if (!componentChunks.TryGetValue(typeIndex, out var chunk) ||
-                !chunk.entityToIndex.TryGetValue(entity.id, out var index))
-                return false;
-
-            var ptr = (byte*)chunk.ptr + index * chunk.componentSize;
-            component = UnsafeUtility.AsRef<T>(ptr);
-            return true;
-        }
-
-        public ref T GetOrAddComponent<T>(Entity entity) where T : unmanaged, IComponent
-        {
-            if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
-
-            if (!HasComponent<T>(entity))
-                AddComponent(entity, new T());
-            return ref GetComponent<T>(entity);
-        }
-
-        public ref T GetOrAddComponent<T>(Entity entity, T defaultValue) where T : unmanaged, IComponent
-        {
-            if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
-
-            if (!HasComponent<T>(entity))
-                AddComponent(entity, defaultValue);
-            return ref GetComponent<T>(entity);
-        }
-
-        private void RemoveComponentInternal(Entity entity, int typeIndex)
-        {
-            if (!componentChunks.TryGetValue(typeIndex, out var chunk)) return;
-            if (!chunk.entityToIndex.TryGetValue(entity.id, out var index)) return;
-
-            var last = chunk.length - 1;
-            if (index < last)
-            {
-                var dst = (byte*)chunk.ptr + index * chunk.componentSize;
-                var src = (byte*)chunk.ptr + last * chunk.componentSize;
-                UnsafeUtility.MemCpy(dst, src, chunk.componentSize);
-
-                var lastEntity = chunk.indexToEntity[last];
-                chunk.entityToIndex[lastEntity] = index;
-                chunk.indexToEntity.Remove(last);
-                chunk.indexToEntity[index] = lastEntity;
-            }
-            else
-            {
-                chunk.indexToEntity.Remove(last);
-            }
-
-            chunk.entityToIndex.Remove(entity.id);
-            chunk.length--;
-
-            componentChunks[typeIndex] = chunk;
-        }
-
+        // ComponentArray implementation needs updating too
         public ComponentArray<T> GetComponentArray<T>() where T : unmanaged, IComponent
         {
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
@@ -181,7 +213,8 @@ namespace UnsafeEcs.Core.Entities
                 {
                     ptr = chunk.ptr,
                     length = chunk.length,
-                    entityToIndex = chunk.entityToIndex
+                    componentIndices = chunk.componentIndices, // Add the componentIndices mapping
+                    maxEntityId = chunk.maxEntityId // Add the maxEntityId value
                 };
             }
 
@@ -193,8 +226,13 @@ namespace UnsafeEcs.Core.Entities
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             foreach (var componentIndex in archetype.componentBits)
             {
-                RemoveComponentInternal(entity, componentIndex);
-                IncrementComponentVersion(componentIndex);
+                if (componentChunks.TryGetValue(componentIndex, out var chunk))
+                {
+                    // Use our new Remove method to remove the component
+                    chunk.Remove(entity.id);
+                    componentChunks[componentIndex] = chunk;
+                    IncrementComponentVersion(componentIndex);
+                }
             }
 
             archetype.componentBits.Clear();

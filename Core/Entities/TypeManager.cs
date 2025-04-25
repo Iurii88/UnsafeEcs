@@ -2,8 +2,9 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using UnsafeEcs.Core.Components;
 
-namespace UnsafeEcs.Core.Components
+namespace UnsafeEcs.Core.Entities
 {
     public static class TypeManager
     {

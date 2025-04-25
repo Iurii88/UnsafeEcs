@@ -170,11 +170,12 @@ namespace UnsafeEcs.Core.Entities
             var managerPtr = GetManagerPtr();
 
             // Prepare all component chunks in advance
-            // First pass to resize all chunks to minimize hash map accesses
+            // First pass to resize all chunks to minimize dictionary accesses
             foreach (var typeIndex in archetype.componentBits)
             {
                 if (!TypeManager.IsBufferType(typeIndex))
                 {
+                    // Handle regular components
                     if (componentChunks.TryGetValue(typeIndex, out var chunk))
                     {
                         int requiredChunkCapacity = chunk.length + count;
@@ -183,36 +184,47 @@ namespace UnsafeEcs.Core.Entities
                             chunk.Resize(Math.Max(chunk.capacity * 2, requiredChunkCapacity));
                             componentChunks[typeIndex] = chunk;
                         }
+
+                        // Ensure componentIndices array can accommodate all entities
+                        chunk.EnsureEntityCapacity(endId - 1);
+                        componentChunks[typeIndex] = chunk;
                     }
                     else
                     {
                         var size = TypeManager.GetTypeSizeByIndex(typeIndex);
                         var initialCapacity = Math.Max(InitialEntityCapacity, count); // Create with adequate capacity
                         chunk = new ComponentChunk(size, initialCapacity);
+
+                        // Ensure componentIndices array can accommodate all entities
+                        chunk.EnsureEntityCapacity(endId - 1);
                         componentChunks[typeIndex] = chunk;
                     }
                 }
                 else
                 {
+                    // Handle buffer components
                     if (bufferChunks.TryGetValue(typeIndex, out var bufferChunk))
                     {
-                        int requiredBufferCapacity = bufferChunk.length + count;
-                        if (bufferChunk.capacity < requiredBufferCapacity)
+                        int requiredChunkCapacity = bufferChunk.length + count;
+                        if (bufferChunk.capacity < requiredChunkCapacity)
                         {
-                            bufferChunk.Resize(Math.Max(bufferChunk.capacity * 2, requiredBufferCapacity));
+                            bufferChunk.Resize(Math.Max(bufferChunk.capacity * 2, requiredChunkCapacity));
                             bufferChunks[typeIndex] = bufferChunk;
                         }
+
+                        // Ensure bufferIndices array can accommodate all entities
+                        bufferChunk.EnsureEntityCapacity(endId - 1);
+                        bufferChunks[typeIndex] = bufferChunk;
                     }
                     else
                     {
                         var elementSize = TypeManager.GetTypeSizeByIndex(typeIndex);
-                        int initialCapacity = Math.Max(InitialEntityCapacity, count); // Create with adequate capacity
-                        bufferChunk = new BufferComponentChunk(elementSize, initialCapacity);
+                        var initialCapacity = Math.Max(InitialEntityCapacity, count);
+                        bufferChunk = new BufferComponentChunk(elementSize, initialCapacity, endId);
                         bufferChunks[typeIndex] = bufferChunk;
                     }
                 }
             }
-
 
             // Create all entities in a single pass
             for (int i = 0; i < count; i++)
@@ -232,29 +244,34 @@ namespace UnsafeEcs.Core.Entities
                 result.Ptr[i] = entity;
             }
 
-
-            // Process component chunks in batch for all entities
+            // Process regular component chunks in batch for all entities
             foreach (var typeIndex in archetype.componentBits)
             {
                 if (!TypeManager.IsBufferType(typeIndex))
                 {
                     var chunk = componentChunks[typeIndex]; // Only retrieve from dictionary once
 
-                    // Prepare indices for batch addition
-                    int startIndexInChunk = chunk.length;
+                    // Create default value for this component type
+                    var defaultComponentData = stackalloc byte[chunk.componentSize];
+                    UnsafeUtility.MemClear(defaultComponentData, chunk.componentSize);
 
                     // Batch add all entities
                     for (int i = 0; i < count; i++)
                     {
                         int entityId = startId + i;
-                        int indexInChunk = startIndexInChunk + i;
 
-                        chunk.entityToIndex.Add(entityId, indexInChunk);
-                        chunk.indexToEntity.Add(indexInChunk, entityId);
+                        // Store the entity ID and update the index mapping
+                        chunk.entityIds[chunk.length] = entityId;
+                        chunk.componentIndices[entityId] = chunk.length;
+
+                        // Copy default component data
+                        UnsafeUtility.MemCpy(
+                            (byte*)chunk.ptr + chunk.length * chunk.componentSize,
+                            defaultComponentData,
+                            chunk.componentSize);
+
+                        chunk.length++;
                     }
-
-                    // Update chunk length after adding all elements
-                    chunk.length += count;
 
                     // Write the updated chunk back to the dictionary
                     componentChunks[typeIndex] = chunk;
@@ -264,26 +281,29 @@ namespace UnsafeEcs.Core.Entities
                 }
                 else
                 {
+                    // Process buffer components in batch
                     var bufferChunk = bufferChunks[typeIndex]; // Only retrieve from dictionary once
+                    int initialBufferCapacity = 8; // Default initial capacity for each buffer
 
-                    // Prepare indices for batch addition
-                    int startIndexInChunk = bufferChunk.length;
-
-                    // Batch add all entities
+                    // Batch add all entity buffers
                     for (int i = 0; i < count; i++)
                     {
                         int entityId = startId + i;
-                        int indexInChunk = startIndexInChunk + i;
 
-                        bufferChunk.InitializeBuffer(indexInChunk);
-                        bufferChunk.entityToIndex.Add(entityId, indexInChunk);
-                        bufferChunk.indexToEntity.Add(indexInChunk, entityId);
+                        // Add buffer for entity and initialize it
+                        int bufferIndex = bufferChunk.length;
+
+                        // Initialize the buffer at this index
+                        bufferChunk.InitializeBuffer(bufferIndex, initialBufferCapacity);
+
+                        // Set up mappings
+                        bufferChunk.entityIds[bufferIndex] = entityId;
+                        bufferChunk.bufferIndices[entityId] = bufferIndex;
+
+                        bufferChunk.length++;
                     }
 
-                    // Update chunk length after adding all elements
-                    bufferChunk.length += count;
-
-                    // Write the updated chunk back to the dictionary
+                    // Write the updated buffer chunk back to the dictionary
                     bufferChunks[typeIndex] = bufferChunk;
 
                     // Increment component version once for the entire batch

@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Components;
 using UnsafeEcs.Core.Entities;
@@ -10,7 +11,8 @@ namespace UnsafeEcs.Core.DynamicBuffers
         [NativeDisableUnsafePtrRestriction] public byte* ptr;
         public int length;
         public int headerSize;
-        public UnsafeHashMap<int, int> entityToIndex;
+        [NativeDisableUnsafePtrRestriction] public int* bufferIndices; // Direct entity ID -> buffer index mapping
+        public int maxEntityId; // Maximum entity ID in mapping
 
         public DynamicBuffer<T> this[int index]
         {
@@ -23,20 +25,38 @@ namespace UnsafeEcs.Core.DynamicBuffers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public DynamicBuffer<T> Get(Entity entity) => this[entityToIndex[entity.id]];
+        public DynamicBuffer<T> Get(Entity entity)
+        {
+            if (entity.id > maxEntityId)
+                throw new InvalidOperationException($"Entity {entity.id} does not have this buffer component");
 
-        public bool Has(Entity entity) => entityToIndex.ContainsKey(entity.id);
+            int index = bufferIndices[entity.id];
+            if (index < 0)
+                throw new InvalidOperationException($"Entity {entity.id} does not have this buffer component");
 
+            return this[index];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Has(Entity entity)
+        {
+            return entity.id <= maxEntityId && bufferIndices[entity.id] >= 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGet(Entity entity, out DynamicBuffer<T> buffer)
         {
-            if (entityToIndex.TryGetValue(entity.id, out var index))
-            {
-                buffer = this[index];
-                return true;
-            }
-
             buffer = default;
-            return false;
+
+            if (entity.id > maxEntityId)
+                return false;
+
+            int index = bufferIndices[entity.id];
+            if (index < 0)
+                return false;
+
+            buffer = this[index];
+            return true;
         }
     }
 }

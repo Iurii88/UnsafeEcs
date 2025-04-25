@@ -7,21 +7,33 @@ namespace UnsafeEcs.Core.Components
 {
     public unsafe partial struct ComponentChunk : IDisposable
     {
-        public void* ptr;
-        public int length;
-        public int capacity;
-        public readonly int componentSize;
-        public UnsafeHashMap<int, int> entityToIndex;
-        public UnsafeHashMap<int, int> indexToEntity;
+        public void* ptr; // Component data
+        public int length; // Current number of components
+        public int capacity; // Total allocated capacity
+        public readonly int componentSize; // Size of each component in bytes
+
+        // Direct mapping arrays instead of HashMaps
+        public int* entityIds; // Stores entity ID at the same index as the component
+        public int* componentIndices; // Maps entity ID -> component index (sparse set)
+        public int maxEntityId; // Tracks the highest entity ID to resize componentIndices array
 
         public ComponentChunk(int componentSize, int capacity)
         {
             this.componentSize = componentSize;
             this.capacity = capacity;
-            length = 0;
+            this.length = 0;
+            this.maxEntityId = -1;
+
+            // Allocate component data buffer
             ptr = UnsafeUtility.Malloc(capacity * componentSize, 16, Allocator.Persistent);
-            entityToIndex = new UnsafeHashMap<int, int>(capacity, Allocator.Persistent);
-            indexToEntity = new UnsafeHashMap<int, int>(capacity, Allocator.Persistent);
+
+            // Allocate entity ID tracking array
+            entityIds = (int*)UnsafeUtility.Malloc(capacity * sizeof(int), 16, Allocator.Persistent);
+
+            // Initially allocate a small componentIndices array - will grow as needed
+            componentIndices = (int*)UnsafeUtility.Malloc(64 * sizeof(int), 16, Allocator.Persistent);
+            // Initialize all indices to -1 (indicating no component for that entity)
+            UnsafeUtility.MemSet(componentIndices, 0xFF, 64 * sizeof(int));
         }
 
         public void Dispose()
@@ -32,20 +44,118 @@ namespace UnsafeEcs.Core.Components
                 ptr = null;
             }
 
-            entityToIndex.Dispose();
-            indexToEntity.Dispose();
+            if (entityIds != null)
+            {
+                UnsafeUtility.Free(entityIds, Allocator.Persistent);
+                entityIds = null;
+            }
+
+            if (componentIndices != null)
+            {
+                UnsafeUtility.Free(componentIndices, Allocator.Persistent);
+                componentIndices = null;
+            }
         }
 
         public void Resize(int newCapacity)
         {
             if (newCapacity <= capacity) return;
 
+            // Resize component data
             var newPtr = UnsafeUtility.Malloc(newCapacity * componentSize, 16, Allocator.Persistent);
-            UnsafeUtility.MemCpy(newPtr, ptr, math.min(length, capacity) * componentSize);
+            UnsafeUtility.MemCpy(newPtr, ptr, length * componentSize);
             UnsafeUtility.Free(ptr, Allocator.Persistent);
-
             ptr = newPtr;
+
+            // Resize entity ID array
+            var newEntityIds = (int*)UnsafeUtility.Malloc(newCapacity * sizeof(int), 16, Allocator.Persistent);
+            UnsafeUtility.MemCpy(newEntityIds, entityIds, length * sizeof(int));
+            UnsafeUtility.Free(entityIds, Allocator.Persistent);
+            entityIds = newEntityIds;
+
             capacity = newCapacity;
+        }
+
+        // Ensure componentIndices array can hold a given entity ID
+        public void EnsureEntityCapacity(int entityId)
+        {
+            if (entityId <= maxEntityId) return;
+
+            int currentSize = maxEntityId + 1;
+            int newSize = math.max(64, math.ceilpow2(entityId + 1));
+
+            var newIndices = (int*)UnsafeUtility.Malloc(newSize * sizeof(int), 16, Allocator.Persistent);
+
+            // Copy existing data
+            if (currentSize > 0)
+                UnsafeUtility.MemCpy(newIndices, componentIndices, currentSize * sizeof(int));
+
+            // Initialize new elements to -1
+            UnsafeUtility.MemSet((byte*)newIndices + currentSize * sizeof(int), 0xFF, (newSize - currentSize) * sizeof(int));
+
+            UnsafeUtility.Free(componentIndices, Allocator.Persistent);
+            componentIndices = newIndices;
+            maxEntityId = newSize - 1;
+        }
+
+        public void Add(int entityId, void* componentData)
+        {
+            EnsureEntityCapacity(entityId);
+
+            // Store the entity ID and update the index mapping
+            entityIds[length] = entityId;
+            componentIndices[entityId] = length;
+
+            // Copy component data
+            UnsafeUtility.MemCpy(
+                (byte*)ptr + length * componentSize,
+                componentData,
+                componentSize);
+
+            length++;
+        }
+
+        public bool Remove(int entityId)
+        {
+            if (entityId > maxEntityId || componentIndices[entityId] < 0)
+                return false;
+
+            int index = componentIndices[entityId];
+            int lastIndex = length - 1;
+
+            // If this isn't the last element, move the last element to fill the gap
+            if (index < lastIndex)
+            {
+                // Copy the last component data to the removed slot
+                UnsafeUtility.MemCpy(
+                    (byte*)ptr + index * componentSize,
+                    (byte*)ptr + lastIndex * componentSize,
+                    componentSize);
+
+                // Update indices for the moved entity
+                int lastEntityId = entityIds[lastIndex];
+                entityIds[index] = lastEntityId;
+                componentIndices[lastEntityId] = index;
+            }
+
+            // Mark this entity as having no component
+            componentIndices[entityId] = -1;
+            length--;
+
+            return true;
+        }
+
+        public void* GetComponentPtr(int entityId)
+        {
+            if (entityId > maxEntityId || componentIndices[entityId] < 0)
+                return null;
+
+            return (byte*)ptr + componentIndices[entityId] * componentSize;
+        }
+
+        public bool HasComponent(int entityId)
+        {
+            return entityId <= maxEntityId && componentIndices[entityId] >= 0;
         }
     }
 }

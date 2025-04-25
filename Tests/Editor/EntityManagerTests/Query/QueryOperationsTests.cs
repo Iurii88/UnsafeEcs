@@ -2,6 +2,7 @@
 
 using NUnit.Framework;
 using UnsafeEcs.Core.Components;
+using UnsafeEcs.Core.Entities;
 
 namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
 {

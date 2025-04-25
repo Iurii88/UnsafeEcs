@@ -60,7 +60,7 @@ namespace UnsafeEcs.Serialization
                 totalSize += 4; // freeEntities count (int)
                 totalSize += 4; // entityArchetypes count (int)
                 totalSize += 4; // entities count (int)
-                totalSize += 4; // deadEntities count (int) - NEW
+                totalSize += 4; // deadEntities count (int)
                 totalSize += 4; // componentChunks count (int)
                 totalSize += 4; // bufferChunks count (int)
 
@@ -83,9 +83,14 @@ namespace UnsafeEcs.Serialization
                     totalSize += 4; // length
                     totalSize += 4; // capacity
                     totalSize += 4; // componentSize
+                    totalSize += 4; // maxEntityId
 
-                    // For each component entry: entity id (4) + data size
-                    totalSize += kv.Value.length * (4 + kv.Value.componentSize); // EntityId (4) + component data
+                    // Entity ID mapping arrays
+                    totalSize += kv.Value.length * 4; // entityIds array (length-sized)
+                    totalSize += (kv.Value.maxEntityId + 1) * 4; // componentIndices array (maxEntityId+1-sized)
+
+                    // For each component entry: component data
+                    totalSize += kv.Value.length * kv.Value.componentSize;
                 }
 
                 // Buffer data
@@ -95,6 +100,11 @@ namespace UnsafeEcs.Serialization
                     totalSize += 4; // length
                     totalSize += 4; // capacity
                     totalSize += 4; // element size
+                    totalSize += 4; // maxEntityId
+
+                    // Entity ID mapping arrays
+                    totalSize += kv.Value.length * 4; // entityIds array (length-sized)
+                    totalSize += (kv.Value.maxEntityId + 1) * 4; // bufferIndices array (maxEntityId+1-sized)
 
                     for (var i = 0; i < kv.Value.length; i++)
                     {
@@ -102,10 +112,9 @@ namespace UnsafeEcs.Serialization
                         var header = (BufferHeader*)(kv.Value.ptr + i * kv.Value.headerSize);
 
                         // Each buffer entry needs:
-                        // Entity ID and version (4 bytes)
                         // Buffer length and capacity (8 bytes) 
                         // Actual buffer data (length * elementSize)
-                        totalSize += 4 + 8 + header->length * kv.Value.elementSize;
+                        totalSize += 8 + header->length * kv.Value.elementSize;
                     }
                 }
 
@@ -159,7 +168,7 @@ namespace UnsafeEcs.Serialization
                 *(int*)(ptr + position) = manager->entities.Length;
                 position += 4;
 
-                // Dead entities count (4 bytes) - NEW
+                // Dead entities count (4 bytes)
                 *(int*)(ptr + position) = manager->deadEntities.Length;
                 position += 4;
 
@@ -217,57 +226,87 @@ namespace UnsafeEcs.Serialization
                 // Write components
                 foreach (var kv in manager->componentChunks)
                 {
+                    var chunk = kv.Value;
+
                     *(int*)(ptr + position) = kv.Key; // Component type index
                     position += 4;
 
-                    *(int*)(ptr + position) = kv.Value.length; // Entity count
+                    *(int*)(ptr + position) = chunk.length; // Entity count
                     position += 4;
 
-                    *(int*)(ptr + position) = kv.Value.capacity; // Capacity
+                    *(int*)(ptr + position) = chunk.capacity; // Capacity
                     position += 4;
 
-                    *(int*)(ptr + position) = kv.Value.componentSize; // Component size
+                    *(int*)(ptr + position) = chunk.componentSize; // Component size
                     position += 4;
 
-                    for (int i = 0; i < kv.Value.length; i++)
+                    *(int*)(ptr + position) = chunk.maxEntityId; // Max entity ID
+                    position += 4;
+
+                    // Write entityIds array (length-sized)
+                    for (int i = 0; i < chunk.length; i++)
                     {
-                        var entityId = kv.Value.indexToEntity[i];
-
-                        // Write entity
-                        *(int*)(ptr + position) = entityId;
+                        *(int*)(ptr + position) = chunk.entityIds[i];
                         position += 4;
+                    }
 
-                        // Write component data
-                        UnsafeUtility.MemCpy(ptr + position, (byte*)kv.Value.ptr + i * kv.Value.componentSize, kv.Value.componentSize);
-                        position += kv.Value.componentSize;
+                    // Write componentIndices array (maxEntityId+1-sized)
+                    for (int i = 0; i <= chunk.maxEntityId; i++)
+                    {
+                        *(int*)(ptr + position) = chunk.componentIndices[i];
+                        position += 4;
+                    }
+
+                    // Write component data
+                    for (int i = 0; i < chunk.length; i++)
+                    {
+                        UnsafeUtility.MemCpy(
+                            ptr + position,
+                            (byte*)chunk.ptr + (i * chunk.componentSize),
+                            chunk.componentSize);
+                        position += chunk.componentSize;
                     }
                 }
 
                 // Write buffers
                 foreach (var kv in manager->bufferChunks)
                 {
+                    var chunk = kv.Value;
+
                     *(int*)(ptr + position) = kv.Key; // Buffer type index
                     position += 4;
 
-                    *(int*)(ptr + position) = kv.Value.length; // Entity count
+                    *(int*)(ptr + position) = chunk.length; // Buffer count
                     position += 4;
 
-                    *(int*)(ptr + position) = kv.Value.capacity; // Capacity
+                    *(int*)(ptr + position) = chunk.capacity; // Capacity
                     position += 4;
 
-                    *(int*)(ptr + position) = kv.Value.elementSize; // Element size
+                    *(int*)(ptr + position) = chunk.elementSize; // Element size
                     position += 4;
 
-                    for (int i = 0; i < kv.Value.length; i++)
+                    *(int*)(ptr + position) = chunk.maxEntityId; // Max entity ID
+                    position += 4;
+
+                    // Write entityIds array (length-sized)
+                    for (int i = 0; i < chunk.length; i++)
                     {
-                        var entityId = kv.Value.indexToEntity[i];
-
-                        // Write entity
-                        *(int*)(ptr + position) = entityId;
+                        *(int*)(ptr + position) = chunk.entityIds[i];
                         position += 4;
+                    }
 
+                    // Write bufferIndices array (maxEntityId+1-sized)
+                    for (int i = 0; i <= chunk.maxEntityId; i++)
+                    {
+                        *(int*)(ptr + position) = chunk.bufferIndices[i];
+                        position += 4;
+                    }
+
+                    // Write buffer data for each buffer
+                    for (int i = 0; i < chunk.length; i++)
+                    {
                         // Get buffer header
-                        var header = (BufferHeader*)(kv.Value.ptr + i * kv.Value.headerSize);
+                        var header = (BufferHeader*)(chunk.ptr + i * chunk.headerSize);
 
                         // Write buffer metadata
                         *(int*)(ptr + position) = header->length;
@@ -278,8 +317,11 @@ namespace UnsafeEcs.Serialization
                         // Write buffer data if exists
                         if (header->length > 0 && header->pointer != null)
                         {
-                            UnsafeUtility.MemCpy(ptr + position, header->pointer, header->length * kv.Value.elementSize);
-                            position += header->length * kv.Value.elementSize;
+                            UnsafeUtility.MemCpy(
+                                ptr + position,
+                                header->pointer,
+                                header->length * chunk.elementSize);
+                            position += header->length * chunk.elementSize;
                         }
                     }
                 }

@@ -1,7 +1,5 @@
 ﻿using System;
-using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Mathematics;
 using UnsafeEcs.Core.Components;
 using UnsafeEcs.Core.DynamicBuffers;
 
@@ -24,20 +22,13 @@ namespace UnsafeEcs.Core.Entities
                 chunk = new BufferComponentChunk(elementSize, InitialEntityCapacity);
             }
 
-            if (chunk.length >= chunk.capacity)
-                chunk.Resize(math.max(4, chunk.capacity * 2));
-
-            // Initialize the buffer
-            chunk.InitializeBuffer(chunk.length);
-
-            chunk.entityToIndex.Add(entity.id, chunk.length);
-            chunk.indexToEntity.Add(chunk.length, entity.id);
+            // Add buffer using the new method
+            int bufferIndex = chunk.AddEntityBuffer(entity.id);
 
             // Create and return the DynamicBuffer
-            var header = (BufferHeader*)(chunk.ptr + chunk.length * chunk.headerSize);
+            var header = (BufferHeader*)(chunk.ptr + bufferIndex * chunk.headerSize);
             var buffer = new DynamicBuffer<T>(header);
 
-            chunk.length++;
             bufferChunks[typeIndex] = chunk;
             IncrementComponentVersion(typeIndex);
 
@@ -61,7 +52,8 @@ namespace UnsafeEcs.Core.Entities
             if (!bufferChunks.TryGetValue(typeIndex, out var chunk))
                 throw new InvalidOperationException($"Entity does not have buffer component of type {typeof(T).Name}");
 
-            if (!chunk.entityToIndex.TryGetValue(entity.id, out var index))
+            // Use the new method to find buffer index
+            if (!chunk.TryGetBufferIndex(entity.id, out var index))
                 throw new InvalidOperationException($"Entity does not have buffer component of type {typeof(T).Name}");
 
             var header = (BufferHeader*)(chunk.ptr + index * chunk.headerSize);
@@ -81,37 +73,8 @@ namespace UnsafeEcs.Core.Entities
             if (!bufferChunks.TryGetValue(typeIndex, out var chunk))
                 return;
 
-            if (!chunk.entityToIndex.TryGetValue(entity.id, out var index))
-                return;
-
-            // Free the buffer memory
-            var header = (BufferHeader*)(chunk.ptr + index * chunk.headerSize);
-            if (header->pointer != null)
-            {
-                UnsafeUtility.Free(header->pointer, Allocator.Persistent);
-                header->pointer = null;
-            }
-
-            // Handle the swap-remove operation
-            var last = chunk.length - 1;
-            if (index < last)
-            {
-                // Copy the last buffer header to the removed position
-                var srcHeader = (BufferHeader*)(chunk.ptr + last * chunk.headerSize);
-                UnsafeUtility.MemCpy(header, srcHeader, chunk.headerSize);
-
-                var lastEntity = chunk.indexToEntity[last];
-                chunk.entityToIndex[lastEntity] = index;
-                chunk.indexToEntity.Remove(last);
-                chunk.indexToEntity[index] = lastEntity;
-            }
-            else
-            {
-                chunk.indexToEntity.Remove(last);
-            }
-
-            chunk.entityToIndex.Remove(entity.id);
-            chunk.length--;
+            // Use the new method to remove buffer
+            chunk.RemoveEntityBuffer(entity.id);
 
             bufferChunks[typeIndex] = chunk;
             IncrementComponentVersion(typeIndex);
@@ -125,7 +88,7 @@ namespace UnsafeEcs.Core.Entities
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
             return bufferChunks.TryGetValue(typeIndex, out var chunk) &&
                    chunk.ptr != null &&
-                   chunk.entityToIndex.ContainsKey(entity.id);
+                   chunk.HasBuffer(entity.id);
         }
 
         private void DestroyEntityBuffers(Entity entity)
@@ -134,15 +97,10 @@ namespace UnsafeEcs.Core.Entities
             foreach (var componentIndex in archetype.componentBits)
             {
                 if (bufferChunks.TryGetValue(componentIndex, out var bufferChunk) &&
-                    bufferChunk.entityToIndex.TryGetValue(entity.id, out var index))
+                    bufferChunk.HasBuffer(entity.id))
                 {
-                    // Free the buffer memory
-                    var header = (BufferHeader*)(bufferChunk.ptr + index * bufferChunk.headerSize);
-                    if (header->pointer != null)
-                    {
-                        UnsafeUtility.Free(header->pointer, Allocator.Persistent);
-                        header->pointer = null;
-                    }
+                    // Use RemoveEntityBuffer which will free the memory
+                    bufferChunk.RemoveEntityBuffer(entity.id);
                 }
             }
         }
@@ -157,7 +115,7 @@ namespace UnsafeEcs.Core.Entities
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             if (!bufferChunks.TryGetValue(typeIndex, out var chunk) ||
-                !chunk.entityToIndex.TryGetValue(entity.id, out var index))
+                !chunk.TryGetBufferIndex(entity.id, out var index))
                 return false;
 
             var header = (BufferHeader*)(chunk.ptr + index * chunk.headerSize);
@@ -245,7 +203,8 @@ namespace UnsafeEcs.Core.Entities
                     ptr = chunk.ptr,
                     length = chunk.length,
                     headerSize = chunk.headerSize,
-                    entityToIndex = chunk.entityToIndex
+                    bufferIndices = chunk.bufferIndices, // Updated to use the direct mapping
+                    maxEntityId = chunk.maxEntityId
                 };
             }
 

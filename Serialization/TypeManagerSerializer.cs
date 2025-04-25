@@ -1,5 +1,6 @@
 ﻿using Unity.Burst;
 using UnsafeEcs.Core.Components;
+using UnsafeEcs.Core.Entities;
 
 namespace UnsafeEcs.Serialization
 {

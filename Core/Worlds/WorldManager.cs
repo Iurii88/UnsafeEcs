@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnsafeEcs.Core.Components;
+using UnsafeEcs.Core.Entities;
 using Object = UnityEngine.Object;
 
 namespace UnsafeEcs.Core.Worlds
