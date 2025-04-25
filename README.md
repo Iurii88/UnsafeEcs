@@ -311,7 +311,7 @@ public class BulkCreationSystem : SystemBase
 
 **Performance Results:**
 ```
-Created 1000000, ticks:230481, 22 ms
+Created 1000000, ticks:230481, 23 ms
 ```
 
 ### Updating Entities
