@@ -158,12 +158,11 @@ namespace UnsafeEcs.Core.Entities
 
             // Ensure capacity in our entity lists - expand once in advance
             int requiredCapacity = endId;
-            if (entities.Capacity < requiredCapacity)
+            if (entities.Length < requiredCapacity)
             {
-                int newCapacity = Math.Max(entities.Capacity * 2, requiredCapacity);
-                entities.Resize(newCapacity);
-                entityArchetypes.Resize(newCapacity);
-                deadEntities.Resize(newCapacity);
+                entities.Resize(requiredCapacity);
+                entityArchetypes.Resize(requiredCapacity);
+                deadEntities.Resize(requiredCapacity);
             }
 
             // Cache manager pointer - call only once
