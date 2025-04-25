@@ -25,17 +25,8 @@ namespace UnsafeEcs.Core.Entities
         public UnsafeItem<int> nextId;
         public UnsafeList<Entity> freeEntities;
 
-        //cache zone
         private UnsafeList<uint> m_componentVersions;
-        private UnsafeItem<uint> m_globalVersions;
         private UnsafeHashMap<ulong, QueryCacheEntry> m_queryCache;
-        private UnsafeHashMap<ComponentBits, ulong> m_queryVersionHashes;
-
-        private struct QueryCacheEntry
-        {
-            public UnsafeList<Entity> entities;
-            public ulong componentVersionHash;
-        }
 
         public EntityManager(int initialCapacity)
         {
@@ -49,12 +40,9 @@ namespace UnsafeEcs.Core.Entities
             freeEntities = new UnsafeList<Entity>(OtherCapacity, Allocator.Persistent);
             nextId = new UnsafeItem<int>(0);
 
-            //cache
-            m_globalVersions = new UnsafeItem<uint>(1);
             m_componentVersions = new UnsafeList<uint>(OtherCapacity, Allocator.Persistent);
             m_componentVersions.Resize(OtherCapacity, NativeArrayOptions.ClearMemory);
             m_queryCache = new UnsafeHashMap<ulong, QueryCacheEntry>(OtherCapacity, Allocator.Persistent);
-            m_queryVersionHashes = new UnsafeHashMap<ComponentBits, ulong>(OtherCapacity, Allocator.Persistent);
         }
 
         public void Dispose()
@@ -68,7 +56,11 @@ namespace UnsafeEcs.Core.Entities
             bufferChunks.Dispose();
 
             foreach (var kv in m_queryCache)
+            {
                 kv.Value.entities.Dispose();
+                kv.Value.componentVersions.Dispose();
+            }
+
             m_queryCache.Dispose();
 
             entities.Dispose();
@@ -78,8 +70,6 @@ namespace UnsafeEcs.Core.Entities
             nextId.Dispose();
 
             m_componentVersions.Dispose();
-            m_queryVersionHashes.Dispose();
-            m_globalVersions.Dispose();
         }
 
         public void Clear()
@@ -91,10 +81,17 @@ namespace UnsafeEcs.Core.Entities
             deadEntities.Clear();
             freeEntities.Clear();
             nextId.Value = 0;
+
             m_componentVersions.Clear();
-            m_globalVersions.Value = 1;
-            m_queryCache.Clear();
-            m_queryVersionHashes.Clear();
+
+            foreach (var key in m_queryCache.GetKeyArray(Allocator.Temp))
+            {
+                var entry = m_queryCache[key];
+                entry.entities.Clear();
+                entry.componentVersions.Clear();
+                entry.isValid = false;
+                m_queryCache[key] = entry;
+            }
         }
 
         public Entity CreateEntity()
@@ -106,7 +103,6 @@ namespace UnsafeEcs.Core.Entities
             {
                 var recycledEntity = freeEntities[^1];
                 entityId = recycledEntity.id;
-                // Increment version for recycled ID
                 version = recycledEntity.version + 1;
                 freeEntities.RemoveAt(freeEntities.Length - 1);
                 deadEntities.Ptr[entityId] = false;
@@ -147,17 +143,14 @@ namespace UnsafeEcs.Core.Entities
             if (count <= 0)
                 throw new ArgumentException("Count must be greater than zero", nameof(count));
 
-            // Allocate memory for the new entities
             var result = new UnsafeList<Entity>(count, allocator);
             result.Length = count;
 
-            // Calculate starting entity ID
-            int startId = nextId.Value;
+            var startId = nextId.Value;
             nextId.Value += count;
-            int endId = startId + count;
+            var endId = startId + count;
 
-            // Ensure capacity in our entity lists - expand once in advance
-            int requiredCapacity = endId;
+            var requiredCapacity = endId;
             if (entities.Length < requiredCapacity)
             {
                 entities.Resize(requiredCapacity);
@@ -165,53 +158,45 @@ namespace UnsafeEcs.Core.Entities
                 deadEntities.Resize(requiredCapacity);
             }
 
-            // Cache manager pointer - call only once
             var managerPtr = GetManagerPtr();
 
-            // Prepare all component chunks in advance
-            // First pass to resize all chunks to minimize dictionary accesses
             foreach (var typeIndex in archetype.componentBits)
             {
                 if (!TypeManager.IsBufferType(typeIndex))
                 {
-                    // Handle regular components
                     if (componentChunks.TryGetValue(typeIndex, out var chunk))
                     {
-                        int requiredChunkCapacity = chunk.length + count;
+                        var requiredChunkCapacity = chunk.length + count;
                         if (chunk.capacity < requiredChunkCapacity)
                         {
                             chunk.Resize(Math.Max(chunk.capacity * 2, requiredChunkCapacity));
                             componentChunks[typeIndex] = chunk;
                         }
 
-                        // Ensure componentIndices array can accommodate all entities
                         chunk.EnsureEntityCapacity(endId - 1);
                         componentChunks[typeIndex] = chunk;
                     }
                     else
                     {
                         var size = TypeManager.GetTypeSizeByIndex(typeIndex);
-                        var initialCapacity = Math.Max(InitialEntityCapacity, count); // Create with adequate capacity
+                        var initialCapacity = Math.Max(InitialEntityCapacity, count);
                         chunk = new ComponentChunk(size, initialCapacity);
 
-                        // Ensure componentIndices array can accommodate all entities
                         chunk.EnsureEntityCapacity(endId - 1);
                         componentChunks[typeIndex] = chunk;
                     }
                 }
                 else
                 {
-                    // Handle buffer components
                     if (bufferChunks.TryGetValue(typeIndex, out var bufferChunk))
                     {
-                        int requiredChunkCapacity = bufferChunk.length + count;
+                        var requiredChunkCapacity = bufferChunk.length + count;
                         if (bufferChunk.capacity < requiredChunkCapacity)
                         {
                             bufferChunk.Resize(Math.Max(bufferChunk.capacity * 2, requiredChunkCapacity));
                             bufferChunks[typeIndex] = bufferChunk;
                         }
 
-                        // Ensure bufferIndices array can accommodate all entities
                         bufferChunk.EnsureEntityCapacity(endId - 1);
                         bufferChunks[typeIndex] = bufferChunk;
                     }
@@ -225,10 +210,9 @@ namespace UnsafeEcs.Core.Entities
                 }
             }
 
-            // Create all entities in a single pass
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
-                int entityId = startId + i;
+                var entityId = startId + i;
 
                 var entity = new Entity
                 {
@@ -243,27 +227,22 @@ namespace UnsafeEcs.Core.Entities
                 result.Ptr[i] = entity;
             }
 
-            // Process regular component chunks in batch for all entities
             foreach (var typeIndex in archetype.componentBits)
             {
                 if (!TypeManager.IsBufferType(typeIndex))
                 {
-                    var chunk = componentChunks[typeIndex]; // Only retrieve from dictionary once
+                    var chunk = componentChunks[typeIndex];
 
-                    // Create default value for this component type
                     var defaultComponentData = stackalloc byte[chunk.componentSize];
                     UnsafeUtility.MemClear(defaultComponentData, chunk.componentSize);
 
-                    // Batch add all entities
-                    for (int i = 0; i < count; i++)
+                    for (var i = 0; i < count; i++)
                     {
-                        int entityId = startId + i;
+                        var entityId = startId + i;
 
-                        // Store the entity ID and update the index mapping
                         chunk.entityIds[chunk.length] = entityId;
                         chunk.componentIndices[entityId] = chunk.length;
 
-                        // Copy default component data
                         UnsafeUtility.MemCpy(
                             (byte*)chunk.ptr + chunk.length * chunk.componentSize,
                             defaultComponentData,
@@ -272,40 +251,28 @@ namespace UnsafeEcs.Core.Entities
                         chunk.length++;
                     }
 
-                    // Write the updated chunk back to the dictionary
                     componentChunks[typeIndex] = chunk;
-
-                    // Increment component version once for the entire batch
                     IncrementComponentVersion(typeIndex);
                 }
                 else
                 {
-                    // Process buffer components in batch
-                    var bufferChunk = bufferChunks[typeIndex]; // Only retrieve from dictionary once
-                    int initialBufferCapacity = 8; // Default initial capacity for each buffer
+                    var bufferChunk = bufferChunks[typeIndex];
+                    var initialBufferCapacity = 8;
 
-                    // Batch add all entity buffers
-                    for (int i = 0; i < count; i++)
+                    for (var i = 0; i < count; i++)
                     {
-                        int entityId = startId + i;
+                        var entityId = startId + i;
+                        var bufferIndex = bufferChunk.length;
 
-                        // Add buffer for entity and initialize it
-                        int bufferIndex = bufferChunk.length;
-
-                        // Initialize the buffer at this index
                         bufferChunk.InitializeBuffer(bufferIndex, initialBufferCapacity);
 
-                        // Set up mappings
                         bufferChunk.entityIds[bufferIndex] = entityId;
                         bufferChunk.bufferIndices[entityId] = bufferIndex;
 
                         bufferChunk.length++;
                     }
 
-                    // Write the updated buffer chunk back to the dictionary
                     bufferChunks[typeIndex] = bufferChunk;
-
-                    // Increment component version once for the entire batch
                     IncrementComponentVersion(typeIndex);
                 }
             }
@@ -330,7 +297,6 @@ namespace UnsafeEcs.Core.Entities
             deadEntities.Ptr[entity.id] = true;
         }
 
-        // Check if an entity is alive based on its ID and version
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsEntityAlive(Entity entity)
         {
@@ -346,28 +312,20 @@ namespace UnsafeEcs.Core.Entities
                 m_componentVersions.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
 
             m_componentVersions[typeIndex]++;
-            m_globalVersions.Value++;
-
-            ComponentBits componentMask = default;
-            componentMask.SetComponent(typeIndex);
-
-            foreach (var pair in m_queryVersionHashes)
-            {
-                if (pair.Key.HasAny(componentMask))
-                    m_queryVersionHashes[pair.Key] = pair.Value + 1;
-            }
+            InvalidateCachesForComponent(typeIndex);
         }
 
-        private ulong GetQueryVersionHash(ref EntityQuery query)
+        private void InvalidateCachesForComponent(int typeIndex)
         {
-            var key = query.componentBits;
-            if (!m_queryVersionHashes.TryGetValue(key, out var hash))
+            foreach (var kvp in m_queryCache)
             {
-                m_queryVersionHashes.Add(key, m_globalVersions.Value);
-                hash = m_globalVersions.Value;
+                if (kvp.Value.componentVersions.ContainsKey(typeIndex))
+                {
+                    var entry = kvp.Value;
+                    entry.isValid = false;
+                    m_queryCache[kvp.Key] = entry;
+                }
             }
-
-            return hash;
         }
     }
 }
