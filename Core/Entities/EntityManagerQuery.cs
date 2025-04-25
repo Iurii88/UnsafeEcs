@@ -83,32 +83,17 @@ namespace UnsafeEcs.Core.Entities
             UnsafeHashMap<int, uint> componentVersions;
 
             var reuseMemory = m_queryCache.TryGetValue(cacheKey, out var existingEntry);
-
-            var matchCount = 0;
-            for (var i = 0; i < entities.Length; i++)
-            {
-                if (i >= deadEntities.Length || deadEntities.Ptr[i])
-                    continue;
-
-                ref var archetype = ref entityArchetypes.Ptr[i];
-                if (query.MatchesQuery(in archetype.componentBits))
-                    matchCount++;
-            }
-
             if (reuseMemory)
             {
                 resultEntities = existingEntry.entities;
                 componentVersions = existingEntry.componentVersions;
-
                 resultEntities.Clear();
-                if (resultEntities.Capacity < matchCount)
-                    resultEntities.Capacity = matchCount;
-
                 componentVersions.Clear();
             }
             else
             {
-                resultEntities = new UnsafeList<Entity>(matchCount, Allocator.Persistent);
+                var initialCapacity = Math.Min(64, entities.Length);
+                resultEntities = new UnsafeList<Entity>(initialCapacity, Allocator.Persistent);
                 componentVersions = new UnsafeHashMap<int, uint>(16, Allocator.Persistent);
             }
 
@@ -117,7 +102,7 @@ namespace UnsafeEcs.Core.Entities
                 var entity = entities.Ptr[i];
                 if (entity.id >= deadEntities.Length || deadEntities.Ptr[entity.id])
                     continue;
-
+            
                 ref var archetype = ref entityArchetypes.Ptr[entity.id];
                 if (query.MatchesQuery(in archetype.componentBits))
                 {
