@@ -80,12 +80,8 @@ namespace UnsafeEcs.Serialization
                 int deadEntitiesCount = *(int*)(ptr + position);
                 position += 4;
 
-                // Read component count (4 bytes)
-                int componentTypeCount = *(int*)(ptr + position);
-                position += 4;
-
-                // Read buffer count (4 bytes)
-                int bufferTypeCount = *(int*)(ptr + position);
+                // Read chunks count (4 bytes)
+                int chunksCount = *(int*)(ptr + position);
                 position += 4;
 
                 // Read free entities
@@ -141,217 +137,253 @@ namespace UnsafeEcs.Serialization
                     manager->deadEntities.Add(isDead);
                 }
 
-                // Read components
-                //manager->componentChunks.Clear();
-                for (int typeIdx = 0; typeIdx < componentTypeCount; typeIdx++)
+                // Clean up existing chunks and prepare for new ones
+                for (int i = 0; i < manager->chunks.Length; i++)
                 {
-                    int componentTypeIndex = *(int*)(ptr + position);
-                    position += 4;
-
-                    int componentCount = *(int*)(ptr + position);
-                    position += 4;
-
-                    int componentCapacity = *(int*)(ptr + position);
-                    position += 4;
-
-                    int componentSize = *(int*)(ptr + position);
-                    position += 4;
-
-                    int maxEntityId = *(int*)(ptr + position);
-                    position += 4;
-
-                    // Create component chunk
-                    var chunk = new ComponentChunk(componentSize, componentCapacity);
-                    chunk.length = componentCount;
-                    chunk.maxEntityId = maxEntityId;
-
-                    // Allocate or resize arrays if needed to match maxEntityId
-                    if (chunk.entityIds == null || chunk.capacity < componentCount)
-                    {
-                        // Free existing array if needed
-                        if (chunk.entityIds != null)
-                        {
-                            UnsafeUtility.Free(chunk.entityIds, Allocator.Persistent);
-                        }
-
-                        // Allocate new array
-                        chunk.entityIds = (int*)UnsafeUtility.Malloc(
-                            sizeof(int) * componentCapacity,
-                            UnsafeUtility.AlignOf<int>(),
-                            Allocator.Persistent);
-                    }
-
-                    if (chunk.componentIndices == null || maxEntityId >= chunk.maxEntityId)
-                    {
-                        // Free existing array if needed
-                        if (chunk.componentIndices != null)
-                        {
-                            UnsafeUtility.Free(chunk.componentIndices, Allocator.Persistent);
-                        }
-
-                        // Allocate new array with sufficient size
-                        int newSize = maxEntityId + 1;
-                        chunk.componentIndices = (int*)UnsafeUtility.Malloc(
-                            sizeof(int) * newSize,
-                            UnsafeUtility.AlignOf<int>(),
-                            Allocator.Persistent);
-
-                        // Initialize all indices to -1 (no component)
-                        UnsafeUtility.MemSet(chunk.componentIndices, 0xFF, sizeof(int) * newSize); // 0xFF gives -1 for int
-                    }
-
-                    // Read entityIds array (length-sized)
-                    for (int i = 0; i < componentCount; i++)
-                    {
-                        chunk.entityIds[i] = *(int*)(ptr + position);
-                        position += 4;
-                    }
-
-                    // Read componentIndices array (maxEntityId+1-sized)
-                    for (int i = 0; i <= maxEntityId; i++)
-                    {
-                        chunk.componentIndices[i] = *(int*)(ptr + position);
-                        position += 4;
-                    }
-
-                    // Read component data
-                    for (int i = 0; i < componentCount; i++)
-                    {
-                        // Copy component data
-                        UnsafeUtility.MemCpy(
-                            (byte*)chunk.ptr + i * componentSize,
-                            ptr + position,
-                            componentSize);
-                        position += componentSize;
-                    }
-
-                    //manager->componentChunks.Add(componentTypeIndex, chunk);
+                    manager->chunks.Ptr[i].Dispose();
                 }
 
-                // Read buffers
-                //manager->bufferChunks.Clear();
-                for (int typeIdx = 0; typeIdx < bufferTypeCount; typeIdx++)
+                manager->chunks.Clear();
+
+                // Ensure we have enough space for all chunks
+                if (manager->chunks.Capacity < chunksCount)
                 {
-                    int bufferTypeIndex = *(int*)(ptr + position);
+                    manager->chunks.SetCapacity(chunksCount);
+                }
+
+                // Read chunks
+                for (int chunkIdx = 0; chunkIdx < chunksCount; chunkIdx++)
+                {
+                    // Read type index (4 bytes) - this is the index in the chunks array
+                    int typeIndex = *(int*)(ptr + position);
                     position += 4;
 
-                    int bufferCount = *(int*)(ptr + position);
-                    position += 4;
+                    // Read isBuffer flag (1 byte)
+                    bool isBuffer = *(bool*)(ptr + position);
+                    position += 1;
 
-                    int chunkCapacity = *(int*)(ptr + position);
-                    position += 4;
-
-                    int elementSize = *(int*)(ptr + position);
-                    position += 4;
-
-                    int maxEntityId = *(int*)(ptr + position);
-                    position += 4;
-
-                    var chunk = new BufferChunk(elementSize, chunkCapacity);
-                    chunk.length = bufferCount;
-                    chunk.maxEntityId = maxEntityId;
-
-                    // Allocate or resize arrays if needed to match maxEntityId
-                    if (chunk.entityIds == null || chunk.capacity < bufferCount)
+                    // Ensure chunks array has enough elements
+                    while (manager->chunks.Length <= typeIndex)
                     {
-                        // Free existing array if needed
-                        if (chunk.entityIds != null)
-                        {
-                            UnsafeUtility.Free(chunk.entityIds, Allocator.Persistent);
-                        }
-
-                        // Allocate new array
-                        chunk.entityIds = (int*)UnsafeUtility.Malloc(
-                            sizeof(int) * chunkCapacity,
-                            UnsafeUtility.AlignOf<int>(),
-                            Allocator.Persistent);
+                        manager->chunks.Add(new ChunkUnion { chunkPtr = null, isBuffer = false });
                     }
 
-                    if (chunk.bufferIndices == null || maxEntityId >= chunk.maxEntityId)
+                    if (isBuffer)
                     {
-                        // Free existing array if needed
-                        if (chunk.bufferIndices != null)
-                        {
-                            UnsafeUtility.Free(chunk.bufferIndices, Allocator.Persistent);
-                        }
+                        // Read buffer chunk data
+                        int bufferCount = *(int*)(ptr + position);
+                        position += 4;
 
-                        // Allocate new array with sufficient size
-                        int newSize = maxEntityId + 1;
-                        chunk.bufferIndices = (int*)UnsafeUtility.Malloc(
-                            sizeof(int) * newSize,
-                            UnsafeUtility.AlignOf<int>(),
+                        int chunkCapacity = *(int*)(ptr + position);
+                        position += 4;
+
+                        int elementSize = *(int*)(ptr + position);
+                        position += 4;
+
+                        int maxEntityId = *(int*)(ptr + position);
+                        position += 4;
+
+                        // Create buffer chunk
+                        BufferChunk* chunk = (BufferChunk*)UnsafeUtility.Malloc(
+                            UnsafeUtility.SizeOf<BufferChunk>(),
+                            UnsafeUtility.AlignOf<BufferChunk>(),
                             Allocator.Persistent);
 
-                        // Initialize all indices to -1 (no buffer)
-                        UnsafeUtility.MemSet(chunk.bufferIndices, 0xFF, sizeof(int) * newSize); // 0xFF gives -1 for int
-                    }
+                        *chunk = new BufferChunk(elementSize, chunkCapacity);
+                        chunk->length = bufferCount;
+                        chunk->maxEntityId = maxEntityId;
 
-                    // Read entityIds array (length-sized)
-                    for (int i = 0; i < bufferCount; i++)
-                    {
-                        chunk.entityIds[i] = *(int*)(ptr + position);
-                        position += 4;
-                    }
-
-                    // Read bufferIndices array (maxEntityId+1-sized)
-                    for (int i = 0; i <= maxEntityId; i++)
-                    {
-                        chunk.bufferIndices[i] = *(int*)(ptr + position);
-                        position += 4;
-                    }
-
-                    for (int i = 0; i < bufferCount; i++)
-                    {
-                        // Initialize buffer
-                        chunk.InitializeBuffer(i);
-
-                        // Get pointer to buffer header
-                        var header = (BufferHeader*)(chunk.ptr + i * chunk.headerSize);
-
-                        // Read serialized buffer metadata
-                        int bufferLength = *(int*)(ptr + position);
-                        position += 4;
-                        int bufferCapacity = *(int*)(ptr + position);
-                        position += 4;
-
-                        // Handle buffer data if present
-                        if (bufferLength > 0)
+                        // Allocate or resize arrays if needed to match maxEntityId
+                        if (chunk->entityIds == null || chunk->capacity < bufferCount)
                         {
-                            // Allocate memory for buffer data if needed
-                            if (header->capacity < bufferLength)
+                            // Free existing array if needed
+                            if (chunk->entityIds != null)
                             {
-                                if (header->pointer != null)
-                                {
-                                    UnsafeUtility.Free(header->pointer, Allocator.Persistent);
-                                }
-
-                                header->pointer = (byte*)UnsafeUtility.Malloc(
-                                    bufferLength * elementSize,
-                                    UnsafeUtility.AlignOf<byte>(),
-                                    Allocator.Persistent);
-
-                                header->capacity = bufferCapacity;
+                                UnsafeUtility.Free(chunk->entityIds, Allocator.Persistent);
                             }
 
-                            // Set buffer length
-                            header->length = bufferLength;
-
-                            // Copy buffer content
-                            UnsafeUtility.MemCpy(
-                                header->pointer,
-                                ptr + position,
-                                bufferLength * elementSize);
-
-                            position += bufferLength * elementSize;
+                            // Allocate new array
+                            chunk->entityIds = (int*)UnsafeUtility.Malloc(
+                                sizeof(int) * chunkCapacity,
+                                UnsafeUtility.AlignOf<int>(),
+                                Allocator.Persistent);
                         }
-                        else
+
+                        if (chunk->bufferIndices == null || maxEntityId >= chunk->maxEntityId)
                         {
-                            // Empty buffer, ensure length is 0
-                            header->length = 0;
-                        }
-                    }
+                            // Free existing array if needed
+                            if (chunk->bufferIndices != null)
+                            {
+                                UnsafeUtility.Free(chunk->bufferIndices, Allocator.Persistent);
+                            }
 
-                    //manager->bufferChunks.Add(bufferTypeIndex, chunk);
+                            // Allocate new array with sufficient size
+                            int newSize = maxEntityId + 1;
+                            chunk->bufferIndices = (int*)UnsafeUtility.Malloc(
+                                sizeof(int) * newSize,
+                                UnsafeUtility.AlignOf<int>(),
+                                Allocator.Persistent);
+
+                            // Initialize all indices to -1 (no buffer)
+                            UnsafeUtility.MemSet(chunk->bufferIndices, 0xFF, sizeof(int) * newSize); // 0xFF gives -1 for int
+                        }
+
+                        // Read entityIds array (length-sized)
+                        for (int i = 0; i < bufferCount; i++)
+                        {
+                            chunk->entityIds[i] = *(int*)(ptr + position);
+                            position += 4;
+                        }
+
+                        // Read bufferIndices array (maxEntityId+1-sized)
+                        for (int i = 0; i <= maxEntityId; i++)
+                        {
+                            chunk->bufferIndices[i] = *(int*)(ptr + position);
+                            position += 4;
+                        }
+
+                        for (int i = 0; i < bufferCount; i++)
+                        {
+                            // Initialize buffer
+                            chunk->InitializeBuffer(i);
+
+                            // Get pointer to buffer header
+                            var header = (BufferHeader*)(chunk->ptr + i * chunk->headerSize);
+
+                            // Read serialized buffer metadata
+                            int bufferLength = *(int*)(ptr + position);
+                            position += 4;
+                            int bufferCapacity = *(int*)(ptr + position);
+                            position += 4;
+
+                            // Handle buffer data if present
+                            if (bufferLength > 0)
+                            {
+                                // Allocate memory for buffer data if needed
+                                if (header->capacity < bufferLength)
+                                {
+                                    if (header->pointer != null)
+                                    {
+                                        UnsafeUtility.Free(header->pointer, Allocator.Persistent);
+                                    }
+
+                                    header->pointer = (byte*)UnsafeUtility.Malloc(
+                                        bufferLength * elementSize,
+                                        UnsafeUtility.AlignOf<byte>(),
+                                        Allocator.Persistent);
+
+                                    header->capacity = bufferCapacity;
+                                }
+
+                                // Set buffer length
+                                header->length = bufferLength;
+
+                                // Copy buffer content
+                                UnsafeUtility.MemCpy(
+                                    header->pointer,
+                                    ptr + position,
+                                    bufferLength * elementSize);
+
+                                position += bufferLength * elementSize;
+                            }
+                            else
+                            {
+                                // Empty buffer, ensure length is 0
+                                header->length = 0;
+                            }
+                        }
+
+                        // Store the buffer chunk in the chunks array
+                        manager->chunks.Ptr[typeIndex] = ChunkUnion.FromBufferChunk(chunk);
+                    }
+                    else
+                    {
+                        // Read component chunk data
+                        int componentCount = *(int*)(ptr + position);
+                        position += 4;
+
+                        int componentCapacity = *(int*)(ptr + position);
+                        position += 4;
+
+                        int componentSize = *(int*)(ptr + position);
+                        position += 4;
+
+                        int maxEntityId = *(int*)(ptr + position);
+                        position += 4;
+
+                        // Create component chunk
+                        ComponentChunk* chunk = (ComponentChunk*)UnsafeUtility.Malloc(
+                            UnsafeUtility.SizeOf<ComponentChunk>(),
+                            UnsafeUtility.AlignOf<ComponentChunk>(),
+                            Allocator.Persistent);
+
+                        *chunk = new ComponentChunk(componentSize, componentCapacity);
+                        chunk->length = componentCount;
+                        chunk->maxEntityId = maxEntityId;
+
+                        // Allocate or resize arrays if needed to match maxEntityId
+                        if (chunk->entityIds == null || chunk->capacity < componentCount)
+                        {
+                            // Free existing array if needed
+                            if (chunk->entityIds != null)
+                            {
+                                UnsafeUtility.Free(chunk->entityIds, Allocator.Persistent);
+                            }
+
+                            // Allocate new array
+                            chunk->entityIds = (int*)UnsafeUtility.Malloc(
+                                sizeof(int) * componentCapacity,
+                                UnsafeUtility.AlignOf<int>(),
+                                Allocator.Persistent);
+                        }
+
+                        if (chunk->componentIndices == null || maxEntityId >= chunk->maxEntityId)
+                        {
+                            // Free existing array if needed
+                            if (chunk->componentIndices != null)
+                            {
+                                UnsafeUtility.Free(chunk->componentIndices, Allocator.Persistent);
+                            }
+
+                            // Allocate new array with sufficient size
+                            int newSize = maxEntityId + 1;
+                            chunk->componentIndices = (int*)UnsafeUtility.Malloc(
+                                sizeof(int) * newSize,
+                                UnsafeUtility.AlignOf<int>(),
+                                Allocator.Persistent);
+
+                            // Initialize all indices to -1 (no component)
+                            UnsafeUtility.MemSet(chunk->componentIndices, 0xFF, sizeof(int) * newSize); // 0xFF gives -1 for int
+                        }
+
+                        // Read entityIds array (length-sized)
+                        for (int i = 0; i < componentCount; i++)
+                        {
+                            chunk->entityIds[i] = *(int*)(ptr + position);
+                            position += 4;
+                        }
+
+                        // Read componentIndices array (maxEntityId+1-sized)
+                        for (int i = 0; i <= maxEntityId; i++)
+                        {
+                            chunk->componentIndices[i] = *(int*)(ptr + position);
+                            position += 4;
+                        }
+
+                        // Read component data
+                        for (int i = 0; i < componentCount; i++)
+                        {
+                            // Copy component data
+                            UnsafeUtility.MemCpy(
+                                (byte*)chunk->ptr + i * componentSize,
+                                ptr + position,
+                                componentSize);
+                            position += componentSize;
+                        }
+
+                        // Store the component chunk in the chunks array
+                        manager->chunks.Ptr[typeIndex] = ChunkUnion.FromComponentChunk(chunk);
+                    }
                 }
             }
         }
