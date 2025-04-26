@@ -9,9 +9,10 @@ namespace UnsafeEcs.Core.Entities
     {
         public DynamicBuffer<T> AddBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
+#if DEBUG
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
-
+#endif
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             archetype.componentBits.SetComponent(typeIndex);
@@ -22,10 +23,7 @@ namespace UnsafeEcs.Core.Entities
                 chunk = new BufferComponentChunk(elementSize, InitialEntityCapacity);
             }
 
-            // Add buffer using the new method
             int bufferIndex = chunk.AddEntityBuffer(entity.id);
-
-            // Create and return the DynamicBuffer
             var header = (BufferHeader*)(chunk.ptr + bufferIndex * chunk.headerSize);
             var buffer = new DynamicBuffer<T>(header);
 
@@ -44,15 +42,15 @@ namespace UnsafeEcs.Core.Entities
 
         public DynamicBuffer<T> GetBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
+#if DEBUG
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
-
+#endif
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             if (!bufferChunks.TryGetValue(typeIndex, out var chunk))
                 throw new InvalidOperationException($"Entity does not have buffer component of type {typeof(T).Name}");
 
-            // Use the new method to find buffer index
             if (!chunk.TryGetBufferIndex(entity.id, out var index))
                 throw new InvalidOperationException($"Entity does not have buffer component of type {typeof(T).Name}");
 
@@ -62,9 +60,10 @@ namespace UnsafeEcs.Core.Entities
 
         public void RemoveBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
+#if DEBUG
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
-
+#endif
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
@@ -73,7 +72,6 @@ namespace UnsafeEcs.Core.Entities
             if (!bufferChunks.TryGetValue(typeIndex, out var chunk))
                 return;
 
-            // Use the new method to remove buffer
             chunk.RemoveEntityBuffer(entity.id);
 
             bufferChunks[typeIndex] = chunk;
@@ -99,7 +97,6 @@ namespace UnsafeEcs.Core.Entities
                 if (bufferChunks.TryGetValue(componentIndex, out var bufferChunk) &&
                     bufferChunk.HasBuffer(entity.id))
                 {
-                    // Use RemoveEntityBuffer which will free the memory
                     bufferChunk.RemoveEntityBuffer(entity.id);
                 }
             }
@@ -123,24 +120,24 @@ namespace UnsafeEcs.Core.Entities
             return true;
         }
 
-        // Get or create a buffer component on an entity
         public DynamicBuffer<T> GetOrCreateBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
+#if DEBUG
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
-
+#endif
             if (TryGetBuffer<T>(entity, out var buffer))
                 return buffer;
 
             return AddBuffer<T>(entity);
         }
 
-        // Set the contents of a buffer from an array (will create if it doesn't exist)
         public DynamicBuffer<T> SetBuffer<T>(Entity entity, T[] data) where T : unmanaged, IBufferElement
         {
+#if DEBUG
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
-
+#endif
             var buffer = GetOrCreateBuffer<T>(entity);
             buffer.Clear();
             buffer.CopyFrom(data);
@@ -148,12 +145,12 @@ namespace UnsafeEcs.Core.Entities
             return buffer;
         }
 
-        // Append elements to an existing buffer or create a new one
         public DynamicBuffer<T> AppendToBuffer<T>(Entity entity, T[] data) where T : unmanaged, IBufferElement
         {
+#if DEBUG
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
-
+#endif
             var buffer = GetOrCreateBuffer<T>(entity);
 
             if (data == null || data.Length == 0)
@@ -168,7 +165,6 @@ namespace UnsafeEcs.Core.Entities
             return buffer;
         }
 
-        // Clear a buffer (removes all elements but keeps the buffer component)
         public bool ClearBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
             if (!IsEntityAlive(entity))
@@ -182,12 +178,12 @@ namespace UnsafeEcs.Core.Entities
             return true;
         }
 
-        // Get a read-only version of a buffer (useful for systems that shouldn't modify data)
         public ReadOnlyDynamicBuffer<T> GetBufferReadOnly<T>(Entity entity) where T : unmanaged, IBufferElement
         {
+#if DEBUG
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"Entity {entity} is not alive");
-
+#endif
             var buffer = GetBuffer<T>(entity);
             return new ReadOnlyDynamicBuffer<T>(buffer);
         }
@@ -203,7 +199,7 @@ namespace UnsafeEcs.Core.Entities
                     ptr = chunk.ptr,
                     length = chunk.length,
                     headerSize = chunk.headerSize,
-                    bufferIndices = chunk.bufferIndices, // Updated to use the direct mapping
+                    bufferIndices = chunk.bufferIndices,
                     maxEntityId = chunk.maxEntityId
                 };
             }
