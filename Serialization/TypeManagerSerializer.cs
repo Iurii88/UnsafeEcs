@@ -1,5 +1,6 @@
-﻿using Unity.Burst;
-using UnsafeEcs.Core.Components;
+﻿using System.Runtime.CompilerServices;
+using Unity.Burst;
+using Unity.Collections;
 using UnsafeEcs.Core.Entities;
 
 namespace UnsafeEcs.Serialization
@@ -22,12 +23,12 @@ namespace UnsafeEcs.Serialization
                 // Write count
                 *(int*)ptr = count;
 
-                // Write all type data in registration order
+                // Write all type data
                 int position = 4;
                 for (int i = 0; i < count; i++)
                 {
-                    // Write type hash
-                    long hash = TypeManager.TypeOrder.Data[i];
+                    // Get hash from the inverted TypeToIndex map
+                    long hash = TypeManager.GetTypeHashByIndex(i);
                     *(long*)(ptr + position) = hash;
                     position += 8;
 
@@ -75,15 +76,22 @@ namespace UnsafeEcs.Serialization
                 int typeIndex = TypeManager.GetTypeIndexFromHash(hash);
 
                 // Ensure we have enough space in our lists
-                while (TypeManager.TypeSizes.Data.Length <= typeIndex)
-                {
-                    TypeManager.TypeSizes.Data.Add(0);
-                }
+                EnsureCapacity(typeIndex);
 
                 // Set the appropriate values
                 TypeManager.TypeSizes.Data[typeIndex] = typeSize;
                 TypeManager.IsBufferList.Data[typeIndex] = isBuffer;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void EnsureCapacity(int index)
+        {
+            if (TypeManager.TypeSizes.Data.Length <= index)
+                TypeManager.TypeSizes.Data.Resize(index + 1, NativeArrayOptions.ClearMemory);
+
+            if (TypeManager.IsBufferList.Data.Length <= index)
+                TypeManager.IsBufferList.Data.Resize(index + 1, NativeArrayOptions.ClearMemory);
         }
     }
 }

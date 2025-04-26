@@ -65,19 +65,11 @@ namespace UnsafeEcs.Core.Entities
             nextId.Dispose();
 
             // Dispose query cache
-            if (m_queryCache.IsCreated)
-            {
-                var enumerator = m_queryCache.GetEnumerator();
-                while (enumerator.MoveNext())
-                {
-                    enumerator.Current.Value.Dispose();
-                }
-
-                m_queryCache.Dispose();
-            }
-
-            if (m_componentVersions.IsCreated)
-                m_componentVersions.Dispose();
+            foreach (var kv in m_queryCache)
+                kv.Value.Dispose();
+            m_queryCache.Dispose();
+            
+            m_componentVersions.Dispose();
         }
 
         public void Clear()
@@ -91,22 +83,11 @@ namespace UnsafeEcs.Core.Entities
             nextId.Value = 0;
 
             // Clear query cache
-            if (m_queryCache.IsCreated)
-            {
-                var enumerator = m_queryCache.GetEnumerator();
-                while (enumerator.MoveNext())
-                {
-                    enumerator.Current.Value.Clear();
-                }
+            foreach (var kv in m_queryCache)
+                kv.Value.Clear();
+            m_queryCache.Clear();
 
-                m_queryCache.Clear();
-            }
-
-            if (m_componentVersions.IsCreated)
-            {
-                for (int i = 0; i < m_componentVersions.Length; i++)
-                    m_componentVersions[i] = 1;
-            }
+            m_componentVersions.Clear();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
