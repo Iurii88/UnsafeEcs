@@ -1,13 +1,11 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Entities;
 
 namespace UnsafeEcs.Core.Components
 {
-    public unsafe partial struct ComponentArray<T> : IEnumerable<T> where T : unmanaged
+    public unsafe partial struct ComponentArray<T> where T : unmanaged
     {
         [NativeDisableUnsafePtrRestriction] public void* ptr;
         public int length;
@@ -61,57 +59,6 @@ namespace UnsafeEcs.Core.Components
 
             component = this[index];
             return true;
-        }
-
-        // IEnumerable implementation
-        public IEnumerator<T> GetEnumerator()
-        {
-            return new ComponentArrayEnumerator(this);
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        public struct ComponentArrayEnumerator : IEnumerator<T>
-        {
-            private readonly ComponentArray<T> m_array;
-            private int m_index;
-
-            public ComponentArrayEnumerator(ComponentArray<T> array)
-            {
-                m_array = array;
-                m_index = -1;
-            }
-
-            public bool MoveNext()
-            {
-                m_index++;
-                return m_index < m_array.length;
-            }
-
-            public void Reset()
-            {
-                m_index = -1;
-            }
-
-            public T Current
-            {
-                get
-                {
-                    if (m_index < 0 || m_index >= m_array.length)
-                        throw new InvalidOperationException("Enumerator is not in a valid position");
-
-                    return m_array[m_index];
-                }
-            }
-
-            object IEnumerator.Current => Current;
-
-            public void Dispose()
-            {
-            }
         }
     }
 }

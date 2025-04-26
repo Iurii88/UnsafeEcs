@@ -4,7 +4,7 @@ using Unity.Collections.LowLevel.Unsafe;
 
 namespace UnsafeEcs.Core.DynamicBuffers
 {
-    public unsafe struct BufferComponentChunk : IDisposable
+    public unsafe struct BufferChunk : IDisposable
     {
         public byte* ptr; // Buffer headers storage
         public int length; // Number of active buffers
@@ -17,7 +17,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
         public int* bufferIndices; // Maps entity id -> buffer index (maxEntityId-sized)
         public int maxEntityId; // Current maximum entity ID
 
-        public BufferComponentChunk(int elementSize, int initialCapacity, int maxInitialEntityId = 1024)
+        public BufferChunk(int elementSize, int initialCapacity, int maxInitialEntityId = 1024)
         {
             this.elementSize = elementSize;
             headerSize = UnsafeUtility.SizeOf<BufferHeader>();

@@ -1,8 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using UnsafeEcs.Core.Components;
-using UnsafeEcs.Core.DynamicBuffers;
 using UnsafeEcs.Core.Utils;
 
 namespace UnsafeEcs.Core.Entities
@@ -14,8 +12,7 @@ namespace UnsafeEcs.Core.Entities
         private const int InitialBufferChunkCapacity = 0;
         private const int OtherCapacity = 0;
 
-        public UnsafeHashMap<int, ComponentChunk> componentChunks;
-        public UnsafeHashMap<int, BufferComponentChunk> bufferChunks;
+        public UnsafeList<ChunkUnion> chunks;
 
         public UnsafeList<Entity> entities;
         public UnsafeList<EntityArchetype> entityArchetypes;
@@ -29,8 +26,7 @@ namespace UnsafeEcs.Core.Entities
 
         public EntityManager(int initialCapacity)
         {
-            componentChunks = new UnsafeHashMap<int, ComponentChunk>(InitialComponentChunkCapacity, Allocator.Persistent);
-            bufferChunks = new UnsafeHashMap<int, BufferComponentChunk>(InitialBufferChunkCapacity, Allocator.Persistent);
+            chunks = new UnsafeList<ChunkUnion>(InitialComponentChunkCapacity, Allocator.Persistent);
 
             entities = new UnsafeList<Entity>(initialCapacity, Allocator.Persistent);
             entityArchetypes = new UnsafeList<EntityArchetype>(initialCapacity, Allocator.Persistent);
@@ -50,13 +46,9 @@ namespace UnsafeEcs.Core.Entities
 
         public void Dispose()
         {
-            foreach (var kv in componentChunks)
-                kv.Value.Dispose();
-            componentChunks.Dispose();
-
-            foreach (var kv in bufferChunks)
-                kv.Value.Dispose();
-            bufferChunks.Dispose();
+            for (var i = 0; i < chunks.Length; i++)
+                chunks.Ptr[i].Dispose();
+            chunks.Dispose();
 
             entities.Dispose();
             entityArchetypes.Dispose();
@@ -68,14 +60,16 @@ namespace UnsafeEcs.Core.Entities
             foreach (var kv in m_queryCache)
                 kv.Value.Dispose();
             m_queryCache.Dispose();
-            
+
             m_componentVersions.Dispose();
         }
 
         public void Clear()
         {
-            componentChunks.Clear();
-            bufferChunks.Clear();
+            foreach (var chunk in chunks)
+                chunk.Dispose();
+            chunks.Clear();
+
             entities.Clear();
             entityArchetypes.Clear();
             deadEntities.Clear();
@@ -93,7 +87,7 @@ namespace UnsafeEcs.Core.Entities
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsEntityAlive(Entity entity)
         {
-            if (entity.id < 0 || entity.id >= entities.Length)
+            if (entity.id < 0 || entity.id >= entities.m_length)
                 return false;
 
             return !deadEntities.Ptr[entity.id];

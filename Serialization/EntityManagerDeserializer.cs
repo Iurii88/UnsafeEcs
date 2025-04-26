@@ -142,7 +142,7 @@ namespace UnsafeEcs.Serialization
                 }
 
                 // Read components
-                manager->componentChunks.Clear();
+                //manager->componentChunks.Clear();
                 for (int typeIdx = 0; typeIdx < componentTypeCount; typeIdx++)
                 {
                     int componentTypeIndex = *(int*)(ptr + position);
@@ -225,11 +225,11 @@ namespace UnsafeEcs.Serialization
                         position += componentSize;
                     }
 
-                    manager->componentChunks.Add(componentTypeIndex, chunk);
+                    //manager->componentChunks.Add(componentTypeIndex, chunk);
                 }
 
                 // Read buffers
-                manager->bufferChunks.Clear();
+                //manager->bufferChunks.Clear();
                 for (int typeIdx = 0; typeIdx < bufferTypeCount; typeIdx++)
                 {
                     int bufferTypeIndex = *(int*)(ptr + position);
@@ -247,7 +247,7 @@ namespace UnsafeEcs.Serialization
                     int maxEntityId = *(int*)(ptr + position);
                     position += 4;
 
-                    var chunk = new BufferComponentChunk(elementSize, chunkCapacity);
+                    var chunk = new BufferChunk(elementSize, chunkCapacity);
                     chunk.length = bufferCount;
                     chunk.maxEntityId = maxEntityId;
 
@@ -351,7 +351,7 @@ namespace UnsafeEcs.Serialization
                         }
                     }
 
-                    manager->bufferChunks.Add(bufferTypeIndex, chunk);
+                    //manager->bufferChunks.Add(bufferTypeIndex, chunk);
                 }
             }
         }

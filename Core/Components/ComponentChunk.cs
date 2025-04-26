@@ -1,7 +1,6 @@
 ﻿using System;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Mathematics;
 
 namespace UnsafeEcs.Core.Components
 {
@@ -82,7 +81,7 @@ namespace UnsafeEcs.Core.Components
             if (entityId <= maxEntityId) return;
 
             int currentSize = maxEntityId + 1;
-            int newSize = math.max(64, math.ceilpow2(entityId + 1));
+            int newSize = entityId + 1;
 
             var newIndices = (int*)UnsafeUtility.Malloc(newSize * sizeof(int), 16, Allocator.Persistent);
 
@@ -100,6 +99,12 @@ namespace UnsafeEcs.Core.Components
 
         public void Add(int entityId, void* componentData)
         {
+            // Check if resize is needed
+            if (length >= capacity)
+            {
+                Resize(Math.Max(capacity * 2, 4)); // Double capacity or use minimum size
+            }
+
             EnsureEntityCapacity(entityId);
 
             // Store the entity ID and update the index mapping

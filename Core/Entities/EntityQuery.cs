@@ -316,6 +316,11 @@ namespace UnsafeEcs.Core.Entities
             return m_manager->QueryEntities(ref this);
         }
 
+        public UnsafeList<Entity> FetchWithoutJob()
+        {
+            return m_manager->QueryEntitiesWithoutJob(ref this);
+        }
+
         public override bool Equals(object obj)
         {
             return obj is EntityQuery other && Equals(other);

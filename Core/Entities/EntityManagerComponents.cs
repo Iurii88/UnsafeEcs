@@ -1,6 +1,6 @@
 ﻿using System;
+using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
-using Unity.Mathematics;
 using UnsafeEcs.Core.Components;
 
 namespace UnsafeEcs.Core.Entities
@@ -15,27 +15,24 @@ namespace UnsafeEcs.Core.Entities
 
         public void AddComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-#if DEBUG
-            if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
-#endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             archetype.componentBits.SetComponent(typeIndex);
 
-            if (!componentChunks.TryGetValue(typeIndex, out var chunk))
+            if (typeIndex >= chunks.m_length)
             {
+                chunks.Resize(typeIndex + 1);
+
                 var size = UnsafeUtility.SizeOf<T>();
-                chunk = new ComponentChunk(size, InitialEntityCapacity);
+                var stackChunk = new ComponentChunk(size, InitialEntityCapacity);
+                var chunk = (ComponentChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<ComponentChunk>(), UnsafeUtility.AlignOf<ComponentChunk>(), Allocator.Persistent);
+                UnsafeUtility.CopyStructureToPtr(ref stackChunk, chunk);
+                chunks.Ptr[typeIndex] = ChunkUnion.FromComponentChunk(chunk);
             }
 
-            if (chunk.length >= chunk.capacity)
-                chunk.Resize(math.max(4, chunk.capacity * 2));
+            var existingChunk = chunks.Ptr[typeIndex].AsComponentChunk();
+            existingChunk->Add(entity.id, UnsafeUtility.AddressOf(ref component));
 
-            chunk.EnsureEntityCapacity(entity.id);
-            chunk.Add(entity.id, UnsafeUtility.AddressOf(ref component));
-
-            componentChunks[typeIndex] = chunk;
             IncrementComponentVersion(typeIndex);
         }
 
@@ -48,7 +45,7 @@ namespace UnsafeEcs.Core.Entities
 
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
-            archetype.RemoveComponent(typeIndex);
+            archetype.componentBits.SetComponent(typeIndex);
 
             RemoveComponentInternal(entity, typeIndex);
             IncrementComponentVersion(typeIndex);
@@ -56,13 +53,15 @@ namespace UnsafeEcs.Core.Entities
 
         private void RemoveComponentInternal(Entity entity, int typeIndex)
         {
-            if (!componentChunks.TryGetValue(typeIndex, out var chunk))
+            if (typeIndex >= chunks.m_length)
                 return;
 
-            if (chunk.Remove(entity.id))
-            {
-                componentChunks[typeIndex] = chunk;
-            }
+            var chunkUnion = chunks.Ptr[typeIndex];
+            var chunk = chunkUnion.AsComponentChunk();
+            if (chunk == null)
+                return;
+
+            chunk->Remove(entity.id);
         }
 
         public ref T GetComponent<T>(Entity entity) where T : unmanaged, IComponent
@@ -72,15 +71,19 @@ namespace UnsafeEcs.Core.Entities
                 throw new InvalidOperationException($"Entity {entity} is not alive");
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
-            
-            if (!componentChunks.TryGetValue(typeIndex, out var chunk))
+
+            if (typeIndex >= chunks.Length)
                 throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
-            
-            void* componentPtr = chunk.GetComponentPtr(entity.id);
-            
+
+            var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
+            if (chunk == null)
+                throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
+
+            void* componentPtr = chunk->GetComponentPtr(entity.id);
+
             if (componentPtr == null)
                 throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
-            
+
             return ref UnsafeUtility.AsRef<T>(componentPtr);
         }
 
@@ -92,13 +95,13 @@ namespace UnsafeEcs.Core.Entities
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
-            if (componentChunks.TryGetValue(typeIndex, out var chunk) &&
-                entity.id <= chunk.maxEntityId &&
-                chunk.componentIndices[entity.id] >= 0)
+            if (typeIndex < chunks.Length)
             {
-                int index = chunk.componentIndices[entity.id];
-                var ptr = (byte*)chunk.ptr + index * chunk.componentSize;
-                return ref UnsafeUtility.AsRef<T>(ptr);
+                var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
+                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id))
+                {
+                    return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
+                }
             }
 
             var component = default(T);
@@ -114,13 +117,13 @@ namespace UnsafeEcs.Core.Entities
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
-            if (componentChunks.TryGetValue(typeIndex, out var chunk) &&
-                entity.id <= chunk.maxEntityId &&
-                chunk.componentIndices[entity.id] >= 0)
+            if (typeIndex < chunks.Length)
             {
-                int index = chunk.componentIndices[entity.id];
-                var ptr = (byte*)chunk.ptr + index * chunk.componentSize;
-                return ref UnsafeUtility.AsRef<T>(ptr);
+                var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
+                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id))
+                {
+                    return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
+                }
             }
 
             AddComponent(entity, defaultValue);
@@ -135,9 +138,11 @@ namespace UnsafeEcs.Core.Entities
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
-            return componentChunks.TryGetValue(typeIndex, out var chunk) &&
-                   chunk.ptr != null &&
-                   chunk.HasComponent(entity.id);
+            if (typeIndex >= chunks.Length)
+                return false;
+
+            var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
+            return chunk != null && chunk->HasComponent(entity.id);
         }
 
         public bool TryGetComponent<T>(Entity entity, out T component) where T : unmanaged, IComponent
@@ -150,10 +155,14 @@ namespace UnsafeEcs.Core.Entities
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
-            if (!componentChunks.TryGetValue(typeIndex, out var chunk))
+            if (typeIndex >= chunks.Length)
                 return false;
 
-            void* componentPtr = chunk.GetComponentPtr(entity.id);
+            var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
+            if (chunk == null)
+                return false;
+
+            void* componentPtr = chunk->GetComponentPtr(entity.id);
             if (componentPtr == null)
                 return false;
 
@@ -174,14 +183,15 @@ namespace UnsafeEcs.Core.Entities
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
-            if (!componentChunks.TryGetValue(typeIndex, out var chunk) ||
-                !chunk.HasComponent(entity.id))
+            if (typeIndex >= chunks.Length || chunks.Ptr[typeIndex].AsComponentChunk() == null ||
+                !chunks.Ptr[typeIndex].AsComponentChunk()->HasComponent(entity.id))
             {
                 AddComponent(entity, component);
                 return;
             }
 
-            void* componentPtr = chunk.GetComponentPtr(entity.id);
+            var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
+            void* componentPtr = chunk->GetComponentPtr(entity.id);
             UnsafeUtility.CopyStructureToPtr(ref component, componentPtr);
             IncrementComponentVersion(typeIndex);
         }
@@ -190,16 +200,20 @@ namespace UnsafeEcs.Core.Entities
         {
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
-            if (componentChunks.TryGetValue(typeIndex, out var chunk) && chunk.ptr != null)
+            if (typeIndex < chunks.Length)
             {
-                return new ComponentArray<T>
+                var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
+                if (chunk != null)
                 {
-                    ptr = chunk.ptr,
-                    length = chunk.length,
-                    componentSize = chunk.componentSize,
-                    componentIndices = chunk.componentIndices,
-                    maxEntityId = chunk.maxEntityId
-                };
+                    return new ComponentArray<T>
+                    {
+                        ptr = chunk->ptr,
+                        length = chunk->length,
+                        componentSize = chunk->componentSize,
+                        componentIndices = chunk->componentIndices,
+                        maxEntityId = chunk->maxEntityId
+                    };
+                }
             }
 
             return default;
@@ -210,11 +224,14 @@ namespace UnsafeEcs.Core.Entities
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             foreach (var componentIndex in archetype.componentBits)
             {
-                if (componentChunks.TryGetValue(componentIndex, out var chunk))
+                if (componentIndex < chunks.Length)
                 {
-                    chunk.Remove(entity.id);
-                    componentChunks[componentIndex] = chunk;
-                    IncrementComponentVersion(componentIndex);
+                    var chunk = chunks.Ptr[componentIndex].AsComponentChunk();
+                    if (chunk != null)
+                    {
+                        chunk->Remove(entity.id);
+                        IncrementComponentVersion(componentIndex);
+                    }
                 }
             }
 

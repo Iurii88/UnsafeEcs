@@ -59,26 +59,53 @@ namespace UnsafeEcs.Core.Entities
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Initialize()
         {
-            TypeToIndex.Data = new UnsafeParallelHashMap<long, int>(32, Allocator.Persistent);
-            TypeSizes.Data = new UnsafeList<int>(32, Allocator.Persistent);
-            IsBufferList.Data = new UnsafeList<bool>(32, Allocator.Persistent);
-            TypeCount.Data = 0;
+            if (!TypeToIndex.Data.IsCreated)
+            {
+                TypeToIndex.Data = new UnsafeParallelHashMap<long, int>(32, Allocator.Persistent);
+            }
+
+            if (!TypeSizes.Data.IsCreated)
+            {
+                TypeSizes.Data = new UnsafeList<int>(32, Allocator.Persistent);
+            }
+
+            if (!IsBufferList.Data.IsCreated)
+            {
+                IsBufferList.Data = new UnsafeList<bool>(32, Allocator.Persistent);
+            }
+
+            //TypeCount.Data = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Dispose()
+        {
+            //DisposePrivate();
+        }
+
+        private static void DisposePrivate()
         {
             TypeToIndex.Data.Dispose();
             TypeSizes.Data.Dispose();
             IsBufferList.Data.Dispose();
         }
 
+#if UNITY_EDITOR
+        [UnityEditor.InitializeOnLoadMethod]
+        private static void RegisterDomainReloadCleanup()
+        {
+            UnityEditor.AssemblyReloadEvents.beforeAssemblyReload -= DisposePrivate;
+            UnityEditor.AssemblyReloadEvents.beforeAssemblyReload += DisposePrivate;
+        }
+#endif
+
         [BurstCompile]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static int GetComponentTypeIndex<T>() where T : unmanaged, IComponent
+        public static unsafe int GetComponentTypeIndex<T>() where T : unmanaged, IComponent
         {
-            if (ComponentTypeCache<T>.IsInitialized.Data)
-                return ComponentTypeCache<T>.TypeIndex.Data;
+            var isInitialized = *(bool*)ComponentTypeCache<T>.IsInitialized.UnsafeDataPointer;
+            if (isInitialized)
+                return *(int*)ComponentTypeCache<T>.TypeIndex.UnsafeDataPointer;
 
             var index = RegisterType<T>();
             ComponentTypeCache<T>.TypeIndex.Data = index;

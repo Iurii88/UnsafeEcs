@@ -72,6 +72,22 @@ namespace UnsafeEcs.Core.Entities
 
             return cacheEntry.entities;
         }
+        
+        public UnsafeList<Entity> QueryEntitiesWithoutJob(ref EntityQuery query)
+        {
+            if (!ValidateQueryCache(ref query, out var cacheKey, out var cacheEntry))
+            {
+                ExecuteQueryAndUpdateCache(ref query, cacheKey);
+                
+                if (!m_queryCache.TryGetValue(cacheKey, out cacheEntry))
+                {
+                    throw new InvalidOperationException("Query cache entry not found after job completion");
+                }
+            }
+
+            return cacheEntry.entities;
+        }
+
 
         public ReadOnlySpan<Entity> QueryEntitiesReadOnly(ref EntityQuery query)
         {
@@ -139,16 +155,17 @@ namespace UnsafeEcs.Core.Entities
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void IncrementComponentVersion(int typeIndex)
         {
-            if (typeIndex >= m_componentVersions.Length)
+            var length = m_componentVersions.m_length;
+            if (typeIndex >= length)
             {
-                var oldLength = m_componentVersions.Length;
+                var oldLength = length;
                 m_componentVersions.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
 
                 for (var i = oldLength; i <= typeIndex; i++)
-                    m_componentVersions[i] = 1;
+                    m_componentVersions.Ptr[i] = 1;
             }
 
-            m_componentVersions[typeIndex]++;
+            m_componentVersions.Ptr[typeIndex]++;
         }
 
         public EntityQuery CreateQuery()
