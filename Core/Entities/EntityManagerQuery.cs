@@ -9,11 +9,22 @@ namespace UnsafeEcs.Core.Entities
 {
     public unsafe partial struct EntityManager
     {
-        private struct QueryCacheEntry
+        private struct QueryCacheEntry : IDisposable
         {
             public UnsafeList<Entity> entities;
             public UnsafeHashMap<int, uint> componentVersions;
-            public bool isValid;
+
+            public void Dispose()
+            {
+                entities.Dispose();
+                componentVersions.Dispose();
+            }
+
+            public void Clear()
+            {
+                entities.Clear();
+                componentVersions.Clear();
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -24,25 +35,16 @@ namespace UnsafeEcs.Core.Entities
             if (!m_queryCache.TryGetValue(cacheKey, out cacheEntry))
                 return false;
 
-            if (!cacheEntry.isValid)
-                return false;
-
             foreach (var typeIndex in query.componentBits)
             {
                 if (typeIndex >= m_componentVersions.Length ||
                     !cacheEntry.componentVersions.TryGetValue(typeIndex, out var cachedVersion))
                 {
-                    var entry = cacheEntry;
-                    entry.isValid = false;
-                    m_queryCache[cacheKey] = entry;
                     return false;
                 }
 
                 if (m_componentVersions[typeIndex] != cachedVersion)
                 {
-                    var entry = cacheEntry;
-                    entry.isValid = false;
-                    m_queryCache[cacheKey] = entry;
                     return false;
                 }
             }
@@ -56,7 +58,7 @@ namespace UnsafeEcs.Core.Entities
             {
                 var job = new QueryJob
                 {
-                    managerPtr = (EntityManager*)UnsafeUtility.AddressOf(ref this),
+                    managerPtr = GetManagerPtr(),
                     queryPtr = (EntityQuery*)UnsafeUtility.AddressOf(ref query),
                     cacheKeyValue = cacheKey
                 }.Schedule();
@@ -102,7 +104,7 @@ namespace UnsafeEcs.Core.Entities
                 var entity = entities.Ptr[i];
                 if (entity.id >= deadEntities.Length || deadEntities.Ptr[entity.id])
                     continue;
-            
+
                 ref var archetype = ref entityArchetypes.Ptr[entity.id];
                 if (query.MatchesQuery(in archetype.componentBits))
                 {
@@ -129,10 +131,24 @@ namespace UnsafeEcs.Core.Entities
             {
                 entities = resultEntities,
                 componentVersions = componentVersions,
-                isValid = true
             };
 
             m_queryCache[cacheKey] = cacheEntry;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void IncrementComponentVersion(int typeIndex)
+        {
+            if (typeIndex >= m_componentVersions.Length)
+            {
+                var oldLength = m_componentVersions.Length;
+                m_componentVersions.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
+
+                for (var i = oldLength; i <= typeIndex; i++)
+                    m_componentVersions[i] = 1;
+            }
+
+            m_componentVersions[typeIndex]++;
         }
 
         public EntityQuery CreateQuery()
