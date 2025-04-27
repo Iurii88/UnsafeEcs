@@ -4,7 +4,7 @@ using UnsafeEcs.Core.Components;
 
 namespace UnsafeEcs.Core.Entities
 {
-    public partial struct EntityArchetype : IEquatable<EntityArchetype>
+    public struct EntityArchetype : IEquatable<EntityArchetype>
     {
         public ComponentBits componentBits;
 
@@ -13,19 +13,27 @@ namespace UnsafeEcs.Core.Entities
         {
             componentBits.SetComponent(index);
         }
-        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void RemoveComponent(int index)
         {
             componentBits.RemoveComponent(index);
         }
-        
-        public bool Equals(EntityArchetype other) => componentBits.Equals(other.componentBits);
 
-        public override bool Equals(object obj) =>
-            obj is EntityArchetype other && Equals(other);
+        public bool Equals(EntityArchetype other)
+        {
+            return componentBits.Equals(other.componentBits);
+        }
 
-        public override int GetHashCode() => componentBits.GetHashCode();
+        public override bool Equals(object obj)
+        {
+            return obj is EntityArchetype other && Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return componentBits.GetHashCode();
+        }
 
         public void Clear()
         {

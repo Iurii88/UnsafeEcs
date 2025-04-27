@@ -79,7 +79,7 @@ namespace UnsafeEcs.Core.Entities
             if (chunk == null)
                 throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
 
-            void* componentPtr = chunk->GetComponentPtr(entity.id);
+            var componentPtr = chunk->GetComponentPtr(entity.id);
 
             if (componentPtr == null)
                 throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
@@ -98,10 +98,7 @@ namespace UnsafeEcs.Core.Entities
             if (typeIndex < chunks.Length)
             {
                 var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
-                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id))
-                {
-                    return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
-                }
+                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id)) return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
             }
 
             var component = default(T);
@@ -120,10 +117,7 @@ namespace UnsafeEcs.Core.Entities
             if (typeIndex < chunks.Length)
             {
                 var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
-                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id))
-                {
-                    return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
-                }
+                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id)) return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
             }
 
             AddComponent(entity, defaultValue);
@@ -162,7 +156,7 @@ namespace UnsafeEcs.Core.Entities
             if (chunk == null)
                 return false;
 
-            void* componentPtr = chunk->GetComponentPtr(entity.id);
+            var componentPtr = chunk->GetComponentPtr(entity.id);
             if (componentPtr == null)
                 return false;
 
@@ -191,7 +185,7 @@ namespace UnsafeEcs.Core.Entities
             }
 
             var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
-            void* componentPtr = chunk->GetComponentPtr(entity.id);
+            var componentPtr = chunk->GetComponentPtr(entity.id);
             UnsafeUtility.CopyStructureToPtr(ref component, componentPtr);
             IncrementComponentVersion(typeIndex);
         }
@@ -204,7 +198,6 @@ namespace UnsafeEcs.Core.Entities
             {
                 var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
                 if (chunk != null)
-                {
                     return new ComponentArray<T>
                     {
                         ptr = chunk->ptr,
@@ -213,7 +206,6 @@ namespace UnsafeEcs.Core.Entities
                         componentIndices = chunk->componentIndices,
                         maxEntityId = chunk->maxEntityId
                     };
-                }
             }
 
             return default;
@@ -223,7 +215,6 @@ namespace UnsafeEcs.Core.Entities
         {
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             foreach (var componentIndex in archetype.componentBits)
-            {
                 if (componentIndex < chunks.Length)
                 {
                     var chunk = chunks.Ptr[componentIndex].AsComponentChunk();
@@ -233,7 +224,6 @@ namespace UnsafeEcs.Core.Entities
                         IncrementComponentVersion(componentIndex);
                     }
                 }
-            }
 
             archetype.componentBits.Clear();
         }
