@@ -35,16 +35,16 @@ namespace UnsafeEcs.Serialization
 
             public void Execute()
             {
-                int position = 0;
+                var position = 0;
 
                 // Read header - one field at a time
                 // Magic number (4 bytes)
-                int magic = *(int*)(ptr + position);
+                var magic = *(int*)(ptr + position);
                 if (magic != SerializationMagic) throw new ArgumentException("Invalid data format");
                 position += 4;
 
                 // Type hash (8 bytes)
-                long typeInfoHash = *(long*)(ptr + position);
+                var typeInfoHash = *(long*)(ptr + position);
                 position += 8;
 
                 // Verify type info matches
@@ -60,44 +60,44 @@ namespace UnsafeEcs.Serialization
                 }
 
                 // nextId (4 bytes)
-                int nextId = *(int*)(ptr + position);
+                var nextId = *(int*)(ptr + position);
                 position += 4;
                 manager->nextId.Value = nextId;
 
                 // Free entities count (4 bytes)
-                int freeIdsCount = *(int*)(ptr + position);
+                var freeIdsCount = *(int*)(ptr + position);
                 position += 4;
 
                 // Read archetype count (4 bytes)
-                int entityArchetypesCount = *(int*)(ptr + position);
+                var entityArchetypesCount = *(int*)(ptr + position);
                 position += 4;
 
                 // Read entity count (4 bytes)
-                int entityCount = *(int*)(ptr + position);
+                var entityCount = *(int*)(ptr + position);
                 position += 4;
 
                 // Read dead entities count (4 bytes)
-                int deadEntitiesCount = *(int*)(ptr + position);
+                var deadEntitiesCount = *(int*)(ptr + position);
                 position += 4;
 
                 // Read chunks count (4 bytes)
-                int chunksCount = *(int*)(ptr + position);
+                var chunksCount = *(int*)(ptr + position);
                 position += 4;
 
                 // Read free entities
                 manager->freeEntities.Clear();
-                for (int i = 0; i < freeIdsCount; i++)
+                for (var i = 0; i < freeIdsCount; i++)
                 {
-                    int freeId = *(int*)(ptr + position);
+                    var freeId = *(int*)(ptr + position);
                     position += 4;
-                    uint freeVersion = *(uint*)(ptr + position);
+                    var freeVersion = *(uint*)(ptr + position);
                     position += 4;
                     manager->freeEntities.Add(new Entity { id = freeId, version = freeVersion });
                 }
 
                 // Read archetypes
                 manager->entityArchetypes.Clear();
-                for (int i = 0; i < entityArchetypesCount; i++)
+                for (var i = 0; i < entityArchetypesCount; i++)
                 {
                     // Read ComponentBits
                     EntityArchetype archetype;
@@ -117,11 +117,11 @@ namespace UnsafeEcs.Serialization
 
                 // Read entities
                 manager->entities.Clear();
-                for (int i = 0; i < entityCount; i++)
+                for (var i = 0; i < entityCount; i++)
                 {
-                    int id = *(int*)(ptr + position);
+                    var id = *(int*)(ptr + position);
                     position += 4;
-                    uint version = *(uint*)(ptr + position);
+                    var version = *(uint*)(ptr + position);
                     position += 4;
 
                     var entity = new Entity { id = id, version = version };
@@ -130,15 +130,15 @@ namespace UnsafeEcs.Serialization
 
                 // Read dead entities (1 byte per entity)
                 manager->deadEntities.Clear();
-                for (int i = 0; i < deadEntitiesCount; i++)
+                for (var i = 0; i < deadEntitiesCount; i++)
                 {
-                    bool isDead = *(bool*)(ptr + position);
+                    var isDead = *(bool*)(ptr + position);
                     position += 1;
                     manager->deadEntities.Add(isDead);
                 }
 
                 // Clean up existing chunks and prepare for new ones
-                for (int i = 0; i < manager->chunks.Length; i++)
+                for (var i = 0; i < manager->chunks.Length; i++)
                 {
                     manager->chunks.Ptr[i].Dispose();
                 }
@@ -152,14 +152,14 @@ namespace UnsafeEcs.Serialization
                 }
 
                 // Read chunks
-                for (int chunkIdx = 0; chunkIdx < chunksCount; chunkIdx++)
+                for (var chunkIdx = 0; chunkIdx < chunksCount; chunkIdx++)
                 {
                     // Read type index (4 bytes) - this is the index in the chunks array
-                    int typeIndex = *(int*)(ptr + position);
+                    var typeIndex = *(int*)(ptr + position);
                     position += 4;
 
                     // Read isBuffer flag (1 byte)
-                    bool isBuffer = *(bool*)(ptr + position);
+                    var isBuffer = *(bool*)(ptr + position);
                     position += 1;
 
                     // Ensure chunks array has enough elements
@@ -171,25 +171,25 @@ namespace UnsafeEcs.Serialization
                     if (isBuffer)
                     {
                         // Read buffer chunk data
-                        int bufferCount = *(int*)(ptr + position);
+                        var bufferCount = *(int*)(ptr + position);
                         position += 4;
 
-                        int chunkCapacity = *(int*)(ptr + position);
+                        var chunkCapacity = *(int*)(ptr + position);
                         position += 4;
 
-                        int elementSize = *(int*)(ptr + position);
+                        var elementSize = *(int*)(ptr + position);
                         position += 4;
 
-                        int maxEntityId = *(int*)(ptr + position);
+                        var maxEntityId = *(int*)(ptr + position);
                         position += 4;
 
                         // Create buffer chunk
-                        BufferChunk* chunk = (BufferChunk*)UnsafeUtility.Malloc(
+                        var chunk = (BufferChunk*)UnsafeUtility.Malloc(
                             UnsafeUtility.SizeOf<BufferChunk>(),
                             UnsafeUtility.AlignOf<BufferChunk>(),
                             Allocator.Persistent);
 
-                        *chunk = new BufferChunk(elementSize, chunkCapacity);
+                        *chunk = new BufferChunk(elementSize, chunkCapacity, maxEntityId, typeIndex, manager);
                         chunk->length = bufferCount;
                         chunk->maxEntityId = maxEntityId;
 
@@ -218,7 +218,7 @@ namespace UnsafeEcs.Serialization
                             }
 
                             // Allocate new array with sufficient size
-                            int newSize = maxEntityId + 1;
+                            var newSize = maxEntityId + 1;
                             chunk->bufferIndices = (int*)UnsafeUtility.Malloc(
                                 sizeof(int) * newSize,
                                 UnsafeUtility.AlignOf<int>(),
@@ -229,20 +229,20 @@ namespace UnsafeEcs.Serialization
                         }
 
                         // Read entityIds array (length-sized)
-                        for (int i = 0; i < bufferCount; i++)
+                        for (var i = 0; i < bufferCount; i++)
                         {
                             chunk->entityIds[i] = *(int*)(ptr + position);
                             position += 4;
                         }
 
                         // Read bufferIndices array (maxEntityId+1-sized)
-                        for (int i = 0; i <= maxEntityId; i++)
+                        for (var i = 0; i <= maxEntityId; i++)
                         {
                             chunk->bufferIndices[i] = *(int*)(ptr + position);
                             position += 4;
                         }
 
-                        for (int i = 0; i < bufferCount; i++)
+                        for (var i = 0; i < bufferCount; i++)
                         {
                             // Initialize buffer
                             chunk->InitializeBuffer(i);
@@ -251,9 +251,9 @@ namespace UnsafeEcs.Serialization
                             var header = (BufferHeader*)(chunk->ptr + i * chunk->headerSize);
 
                             // Read serialized buffer metadata
-                            int bufferLength = *(int*)(ptr + position);
+                            var bufferLength = *(int*)(ptr + position);
                             position += 4;
-                            int bufferCapacity = *(int*)(ptr + position);
+                            var bufferCapacity = *(int*)(ptr + position);
                             position += 4;
 
                             // Handle buffer data if present
@@ -299,25 +299,25 @@ namespace UnsafeEcs.Serialization
                     else
                     {
                         // Read component chunk data
-                        int componentCount = *(int*)(ptr + position);
+                        var componentCount = *(int*)(ptr + position);
                         position += 4;
 
-                        int componentCapacity = *(int*)(ptr + position);
+                        var componentCapacity = *(int*)(ptr + position);
                         position += 4;
 
-                        int componentSize = *(int*)(ptr + position);
+                        var componentSize = *(int*)(ptr + position);
                         position += 4;
 
-                        int maxEntityId = *(int*)(ptr + position);
+                        var maxEntityId = *(int*)(ptr + position);
                         position += 4;
 
                         // Create component chunk
-                        ComponentChunk* chunk = (ComponentChunk*)UnsafeUtility.Malloc(
+                        var chunk = (ComponentChunk*)UnsafeUtility.Malloc(
                             UnsafeUtility.SizeOf<ComponentChunk>(),
                             UnsafeUtility.AlignOf<ComponentChunk>(),
                             Allocator.Persistent);
 
-                        *chunk = new ComponentChunk(componentSize, componentCapacity);
+                        *chunk = new ComponentChunk(componentSize, componentCapacity, typeIndex, manager);
                         chunk->length = componentCount;
                         chunk->maxEntityId = maxEntityId;
 
@@ -346,7 +346,7 @@ namespace UnsafeEcs.Serialization
                             }
 
                             // Allocate new array with sufficient size
-                            int newSize = maxEntityId + 1;
+                            var newSize = maxEntityId + 1;
                             chunk->componentIndices = (int*)UnsafeUtility.Malloc(
                                 sizeof(int) * newSize,
                                 UnsafeUtility.AlignOf<int>(),
@@ -357,21 +357,21 @@ namespace UnsafeEcs.Serialization
                         }
 
                         // Read entityIds array (length-sized)
-                        for (int i = 0; i < componentCount; i++)
+                        for (var i = 0; i < componentCount; i++)
                         {
                             chunk->entityIds[i] = *(int*)(ptr + position);
                             position += 4;
                         }
 
                         // Read componentIndices array (maxEntityId+1-sized)
-                        for (int i = 0; i <= maxEntityId; i++)
+                        for (var i = 0; i <= maxEntityId; i++)
                         {
                             chunk->componentIndices[i] = *(int*)(ptr + position);
                             position += 4;
                         }
 
                         // Read component data
-                        for (int i = 0; i < componentCount; i++)
+                        for (var i = 0; i < componentCount; i++)
                         {
                             // Copy component data
                             UnsafeUtility.MemCpy(

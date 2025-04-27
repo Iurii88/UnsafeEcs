@@ -25,7 +25,7 @@ namespace UnsafeEcs.Core.Entities
                 var entity = new Entity
                 {
                     id = entityId, version = version,
-                    managerPtr = m_ptr
+                    managerPtr = m_managerPtr
                 };
 
                 entities.Ptr[entityId] = entity;
@@ -42,7 +42,7 @@ namespace UnsafeEcs.Core.Entities
                 var entity = new Entity
                 {
                     id = entityId, version = version,
-                    managerPtr = m_ptr
+                    managerPtr = m_managerPtr
                 };
 
                 entities.Add(entity);
@@ -70,7 +70,7 @@ namespace UnsafeEcs.Core.Entities
                 deadEntities.Resize(requiredCapacity);
             }
 
-            var managerPtr = m_ptr;
+            var managerPtr = m_managerPtr;
 
             for (var i = 0; i < count; i++)
             {
@@ -98,7 +98,7 @@ namespace UnsafeEcs.Core.Entities
                         chunks.Resize(typeIndex + 1);
 
                         var size = TypeManager.GetTypeSizeByIndex(typeIndex);
-                        var stackChunk = new ComponentChunk(size, InitialEntityCapacity);
+                        var stackChunk = new ComponentChunk(size, InitialEntityCapacity, typeIndex, managerPtr);
                         var chunk = (ComponentChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<ComponentChunk>(), UnsafeUtility.AlignOf<ComponentChunk>(), Allocator.Persistent);
                         UnsafeUtility.CopyStructureToPtr(ref stackChunk, chunk);
                         chunks.Ptr[typeIndex] = ChunkUnion.FromComponentChunk(chunk);
@@ -128,7 +128,7 @@ namespace UnsafeEcs.Core.Entities
 
                         var elementSize = TypeManager.GetTypeSizeByIndex(typeIndex);
                         var bufferChunk = (BufferChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BufferChunk>(), UnsafeUtility.AlignOf<BufferChunk>(), Allocator.Persistent);
-                        *bufferChunk = new BufferChunk(elementSize, count, endId);
+                        *bufferChunk = new BufferChunk(elementSize, count, endId, typeIndex, managerPtr);
                         chunks.Ptr[typeIndex] = ChunkUnion.FromBufferChunk(bufferChunk);
                     }
 

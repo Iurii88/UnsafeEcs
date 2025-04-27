@@ -47,7 +47,7 @@ namespace UnsafeEcs.Core.Entities
 
                 var elementSize = TypeManager.GetTypeSizeByIndex(typeIndex);
                 var bufferChunk = (BufferChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BufferChunk>(), UnsafeUtility.AlignOf<BufferChunk>(), Allocator.Persistent);
-                *bufferChunk = new BufferChunk(elementSize, InitialEntityCapacity, maxEntityId);
+                *bufferChunk = new BufferChunk(elementSize, InitialEntityCapacity, maxEntityId, typeIndex, m_managerPtr);
                 chunks.Ptr[typeIndex] = ChunkUnion.FromBufferChunk(bufferChunk);
             }
         }

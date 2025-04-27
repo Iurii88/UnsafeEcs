@@ -63,7 +63,7 @@ namespace UnsafeEcs.Core.Entities
             {
                 var job = new QueryJob
                 {
-                    managerPtr = m_ptr,
+                    managerPtr = m_managerPtr,
                     queryPtr = (EntityQuery*)UnsafeUtility.AddressOf(ref query),
                     cacheKeyValue = cacheKey
                 }.Schedule();
@@ -114,7 +114,7 @@ namespace UnsafeEcs.Core.Entities
             }
             else
             {
-                var initialCapacity = Math.Min(64, entities.m_length);
+                var initialCapacity = Math.Min(16, entities.m_length);
                 resultEntities = new UnsafeList<Entity>(initialCapacity, Allocator.Persistent);
                 componentVersions = new UnsafeHashMap<int, uint>(16, Allocator.Persistent);
             }
@@ -128,7 +128,7 @@ namespace UnsafeEcs.Core.Entities
                 ref var archetype = ref entityArchetypes.Ptr[entity.id];
                 if (query.MatchesQuery(in archetype.componentBits))
                 {
-                    entity.managerPtr = m_ptr;
+                    entity.managerPtr = m_managerPtr;
                     resultEntities.Add(entity);
                 }
             }
@@ -153,7 +153,7 @@ namespace UnsafeEcs.Core.Entities
 
         public EntityQuery CreateQuery()
         {
-            return new EntityQuery(m_ptr);
+            return new EntityQuery(m_managerPtr);
         }
 
         [BurstCompile]

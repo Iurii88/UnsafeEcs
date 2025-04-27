@@ -22,7 +22,7 @@ namespace UnsafeEcs.Core.Entities
 
         private UnsafeHashMap<ulong, QueryCacheEntry> m_queryCache;
 
-        [NativeDisableUnsafePtrRestriction] private EntityManager* m_ptr;
+        [NativeDisableUnsafePtrRestriction] private EntityManager* m_managerPtr;
 
         public EntityManager(int initialCapacity)
         {
@@ -36,12 +36,12 @@ namespace UnsafeEcs.Core.Entities
             nextId = new UnsafeItem<int>(0);
 
             m_queryCache = new UnsafeHashMap<ulong, QueryCacheEntry>(OtherCapacity, Allocator.Persistent);
-            m_ptr = null;
+            m_managerPtr = null;
         }
 
         public void Initialize()
         {
-            m_ptr = (EntityManager*)UnsafeUtility.AddressOf(ref this);
+            m_managerPtr = (EntityManager*)UnsafeUtility.AddressOf(ref this);
         }
 
         public void Dispose()

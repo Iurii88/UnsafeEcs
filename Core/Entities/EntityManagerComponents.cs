@@ -35,7 +35,7 @@ namespace UnsafeEcs.Core.Entities
                 chunks.Resize(typeIndex + 1);
 
                 var size = TypeManager.GetTypeSizeByIndex(typeIndex);
-                var stackChunk = new ComponentChunk(size, InitialEntityCapacity);
+                var stackChunk = new ComponentChunk(size, InitialEntityCapacity, typeIndex, m_managerPtr);
                 var chunk = (ComponentChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<ComponentChunk>(), UnsafeUtility.AlignOf<ComponentChunk>(), Allocator.Persistent);
                 UnsafeUtility.CopyStructureToPtr(ref stackChunk, chunk);
                 chunks.Ptr[typeIndex] = ChunkUnion.FromComponentChunk(chunk);

@@ -42,25 +42,20 @@ namespace UnsafeEcs.Core.Components
             return ref this[index];
         }
 
-        public void Remove(Entity entity)
+        public bool Remove(Entity entity)
         {
-            if (!m_chunkPtr->Remove(entity.id))
-            {
-#if DEBUG
-                throw new InvalidOperationException($"Cannot remove component for entity {entity.id}: component does not exist");
-#endif
-            }
+            return m_chunkPtr->Remove(entity.id);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add(Entity entity)
+        public void Add(Entity entity, bool cleanComponent = false)
         {
-            Add(entity, new T());
+            m_chunkPtr->Add(entity.id, cleanComponent);
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Add(Entity entity, T component)
+        public void Add(Entity entity, ref T component)
         {
             m_chunkPtr->Add(entity.id, UnsafeUtility.AddressOf(ref component));
         }
