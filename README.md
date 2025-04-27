@@ -197,7 +197,7 @@ UnsafeEcs features a high-performance query system that:
 
 ### Custom Query Filtering
 
-In addition to the standard component-based filtering, UnsafeEcs provides a powerful custom filtering mechanism that allows for more precise entity selection based on component values or other criteria. This is implemented through the `IQueryFilter` interface:
+In addition to the standard component-based filtering, UnsafeEcs provides a custom filtering mechanism that allows for more precise entity selection based on component values or other criteria. This is implemented through the `IQueryFilter` interface:
 
 ```csharp
 public interface IQueryFilter
@@ -244,12 +244,6 @@ var filteredEntities = CreateQuery().With<IntValueComponent>().Fetch(new IntValu
     filterValue = 1
 });
 ```
-
-This approach enables precise filtering based on component values, allowing you to:
-
-- Filter entities based on specific property values
-- Implement complex filtering logic like ranges or pattern matching
-- Combine multiple criteria in custom ways
 
 ## Examples
 
