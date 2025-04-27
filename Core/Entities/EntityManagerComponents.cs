@@ -16,8 +16,6 @@ namespace UnsafeEcs.Core.Entities
         public void AddComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
-            ref var archetype = ref entityArchetypes.Ptr[entity.id];
-            archetype.componentBits.SetComponent(typeIndex);
 
             // Use the helper method to ensure the component chunk exists
             EnsureComponentChunkExists(typeIndex);
@@ -26,7 +24,6 @@ namespace UnsafeEcs.Core.Entities
             var existingChunk = chunks.Ptr[typeIndex].AsComponentChunk();
             existingChunk->Add(entity.id, UnsafeUtility.AddressOf(ref component));
         }
-
 
         private void EnsureComponentChunkExists(int typeIndex)
         {
@@ -50,9 +47,6 @@ namespace UnsafeEcs.Core.Entities
 #endif
 
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
-            ref var archetype = ref entityArchetypes.Ptr[entity.id];
-            archetype.componentBits.RemoveComponent(typeIndex);
-
             RemoveComponentInternal(entity, typeIndex);
         }
 

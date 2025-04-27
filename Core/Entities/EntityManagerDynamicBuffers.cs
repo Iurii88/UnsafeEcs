@@ -11,8 +11,6 @@ namespace UnsafeEcs.Core.Entities
         public DynamicBuffer<T> AddBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
-            ref var archetype = ref entityArchetypes.Ptr[entity.id];
-            archetype.componentBits.SetComponent(typeIndex);
 
             // Ensure the buffer chunk exists
             EnsureBufferChunkExists(typeIndex, entity.id + 1);
@@ -81,10 +79,6 @@ namespace UnsafeEcs.Core.Entities
                 throw new InvalidOperationException($"Entity {entity} is not alive");
 #endif
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
-
-            ref var archetype = ref entityArchetypes.Ptr[entity.id];
-            archetype.componentBits.RemoveComponent(typeIndex);
-
             if (typeIndex >= chunks.Length)
                 return;
 
