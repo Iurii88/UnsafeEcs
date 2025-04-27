@@ -45,7 +45,7 @@ namespace UnsafeEcs.Core.Entities
 
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
-            archetype.componentBits.SetComponent(typeIndex);
+            archetype.componentBits.RemoveComponent(typeIndex);
 
             RemoveComponentInternal(entity, typeIndex);
             IncrementComponentVersion(typeIndex);

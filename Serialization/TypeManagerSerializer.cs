@@ -1,7 +1,5 @@
-﻿using System.Runtime.CompilerServices;
-using Unity.Burst;
-using Unity.Collections;
-using UnsafeEcs.Core.Entities;
+﻿using Unity.Burst;
+using UnsafeEcs.Core.Components;
 
 namespace UnsafeEcs.Serialization
 {
@@ -11,11 +9,11 @@ namespace UnsafeEcs.Serialization
         public static byte[] SerializeTypeInfo()
         {
             // Count the number of registered types
-            int count = TypeManager.TypeCount.Data;
+            var count = TypeManager.TypeCount.Data;
 
             // Calculate size: 4 bytes for count + for each type: 
             // 8 bytes (hash) + 4 bytes (size) + 1 byte (isBuffer)
-            int size = 4 + count * 13;
+            var size = 4 + count * 13;
 
             var output = new byte[size];
             fixed (byte* ptr = output)
@@ -23,22 +21,22 @@ namespace UnsafeEcs.Serialization
                 // Write count
                 *(int*)ptr = count;
 
-                // Write all type data
-                int position = 4;
-                for (int i = 0; i < count; i++)
+                // Write all type data in registration order
+                var position = 4;
+                for (var i = 0; i < count; i++)
                 {
-                    // Get hash from the inverted TypeToIndex map
-                    long hash = TypeManager.GetTypeHashByIndex(i);
+                    // Write type hash
+                    var hash = TypeManager.TypeOrder.Data[i];
                     *(long*)(ptr + position) = hash;
                     position += 8;
 
                     // Write type size
-                    int typeSize = TypeManager.TypeSizes.Data[i];
+                    var typeSize = TypeManager.TypeSizes.Data[i];
                     *(int*)(ptr + position) = typeSize;
                     position += 4;
 
                     // Write isBuffer flag
-                    bool isBuffer = TypeManager.IsBufferList.Data[i];
+                    var isBuffer = TypeManager.IsBufferList.Data[i];
                     *(bool*)(ptr + position) = isBuffer;
                     position += 1;
                 }
@@ -50,10 +48,10 @@ namespace UnsafeEcs.Serialization
         [BurstCompile]
         public static void DeserializeTypeInfo(MemoryRegion memoryRegion)
         {
-            byte* ptr = memoryRegion.ptr;
+            var ptr = memoryRegion.ptr;
 
-            int count = *(int*)ptr;
-            int position = 4;
+            var count = *(int*)ptr;
+            var position = 4;
 
             // Clear existing types
             TypeManager.Clear();
@@ -73,25 +71,15 @@ namespace UnsafeEcs.Serialization
                 position += 1;
 
                 // Register the type in the correct order
-                int typeIndex = TypeManager.GetTypeIndexFromHash(hash);
+                var typeIndex = TypeManager.GetTypeIndexFromHash(hash);
 
                 // Ensure we have enough space in our lists
-                EnsureCapacity(typeIndex);
+                while (TypeManager.TypeSizes.Data.Length <= typeIndex) TypeManager.TypeSizes.Data.Add(0);
 
                 // Set the appropriate values
                 TypeManager.TypeSizes.Data[typeIndex] = typeSize;
                 TypeManager.IsBufferList.Data[typeIndex] = isBuffer;
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void EnsureCapacity(int index)
-        {
-            if (TypeManager.TypeSizes.Data.Length <= index)
-                TypeManager.TypeSizes.Data.Resize(index + 1, NativeArrayOptions.ClearMemory);
-
-            if (TypeManager.IsBufferList.Data.Length <= index)
-                TypeManager.IsBufferList.Data.Resize(index + 1, NativeArrayOptions.ClearMemory);
         }
     }
 }

@@ -2,6 +2,7 @@
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
+using UnsafeEcs.Core.Components;
 using UnsafeEcs.Core.DynamicBuffers;
 using UnsafeEcs.Core.Entities;
 using UnsafeEcs.Core.Utils;
@@ -75,7 +76,7 @@ namespace UnsafeEcs.Serialization
                 totalSize += manager->deadEntities.Length;
 
                 // Chunks data
-                for (int i = 0; i < manager->chunks.Length; i++)
+                for (var i = 0; i < manager->chunks.Length; i++)
                 {
                     ref var chunkUnion = ref manager->chunks.Ptr[i];
 
@@ -137,17 +138,14 @@ namespace UnsafeEcs.Serialization
             private static long ComputeTypeInfoHash()
             {
                 long hash = 0;
-                foreach (var kv in TypeManager.TypeToIndex.Data)
-                {
-                    hash = hash * 31 + kv.Key;
-                }
+                foreach (var kv in TypeManager.TypeToIndex.Data) hash = hash * 31 + kv.Key;
 
                 return hash;
             }
 
             public void Execute()
             {
-                int position = 0;
+                var position = 0;
 
                 // Write header - separated fields for better clarity
                 // Magic number (4 bytes)
@@ -209,7 +207,7 @@ namespace UnsafeEcs.Serialization
                 }
 
                 // Write entities
-                for (int i = 0; i < manager->entities.Length; i++)
+                for (var i = 0; i < manager->entities.Length; i++)
                 {
                     var entity = manager->entities[i];
                     *(int*)(ptr + position) = entity.id;
@@ -219,14 +217,14 @@ namespace UnsafeEcs.Serialization
                 }
 
                 // Write dead entities (1 byte per entity)
-                for (int i = 0; i < manager->deadEntities.Length; i++)
+                for (var i = 0; i < manager->deadEntities.Length; i++)
                 {
                     *(bool*)(ptr + position) = manager->deadEntities.Ptr[i];
                     position += 1;
                 }
 
                 // Write chunks data
-                for (int i = 0; i < manager->chunks.Length; i++)
+                for (var i = 0; i < manager->chunks.Length; i++)
                 {
                     ref var chunkUnion = ref manager->chunks.Ptr[i];
 
@@ -255,21 +253,21 @@ namespace UnsafeEcs.Serialization
                         position += 4;
 
                         // Write entityIds array (length-sized)
-                        for (int j = 0; j < bufferChunk->length; j++)
+                        for (var j = 0; j < bufferChunk->length; j++)
                         {
                             *(int*)(ptr + position) = bufferChunk->entityIds[j];
                             position += 4;
                         }
 
                         // Write bufferIndices array (maxEntityId+1-sized)
-                        for (int j = 0; j <= bufferChunk->maxEntityId; j++)
+                        for (var j = 0; j <= bufferChunk->maxEntityId; j++)
                         {
                             *(int*)(ptr + position) = bufferChunk->bufferIndices[j];
                             position += 4;
                         }
 
                         // Write buffer data for each buffer
-                        for (int j = 0; j < bufferChunk->length; j++)
+                        for (var j = 0; j < bufferChunk->length; j++)
                         {
                             // Get buffer header
                             var header = (BufferHeader*)(bufferChunk->ptr + j * bufferChunk->headerSize);
@@ -308,25 +306,25 @@ namespace UnsafeEcs.Serialization
                         position += 4;
 
                         // Write entityIds array (length-sized)
-                        for (int j = 0; j < componentChunk->length; j++)
+                        for (var j = 0; j < componentChunk->length; j++)
                         {
                             *(int*)(ptr + position) = componentChunk->entityIds[j];
                             position += 4;
                         }
 
                         // Write componentIndices array (maxEntityId+1-sized)
-                        for (int j = 0; j <= componentChunk->maxEntityId; j++)
+                        for (var j = 0; j <= componentChunk->maxEntityId; j++)
                         {
                             *(int*)(ptr + position) = componentChunk->componentIndices[j];
                             position += 4;
                         }
 
                         // Write component data
-                        for (int j = 0; j < componentChunk->length; j++)
+                        for (var j = 0; j < componentChunk->length; j++)
                         {
                             UnsafeUtility.MemCpy(
                                 ptr + position,
-                                (byte*)componentChunk->ptr + (j * componentChunk->componentSize),
+                                (byte*)componentChunk->ptr + j * componentChunk->componentSize,
                                 componentChunk->componentSize);
                             position += componentChunk->componentSize;
                         }

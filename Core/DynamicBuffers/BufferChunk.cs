@@ -1,6 +1,7 @@
 ﻿using System;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Mathematics;
 
 namespace UnsafeEcs.Core.DynamicBuffers
 {
@@ -26,28 +27,16 @@ namespace UnsafeEcs.Core.DynamicBuffers
             maxEntityId = maxInitialEntityId;
 
             // Allocate memory for buffer headers
-            ptr = (byte*)UnsafeUtility.Malloc(
-                capacity * headerSize,
-                UnsafeUtility.AlignOf<BufferHeader>(),
-                Allocator.Persistent);
+            ptr = (byte*)UnsafeUtility.Malloc(capacity * headerSize, UnsafeUtility.AlignOf<BufferHeader>(), Allocator.Persistent);
 
             // Allocate direct mapping arrays
-            entityIds = (int*)UnsafeUtility.Malloc(
-                capacity * sizeof(int),
-                UnsafeUtility.AlignOf<int>(),
-                Allocator.Persistent);
+            entityIds = (int*)UnsafeUtility.Malloc(capacity * sizeof(int), UnsafeUtility.AlignOf<int>(), Allocator.Persistent);
 
             // Initialize entity->buffer index mapping to -1 (no buffer)
-            bufferIndices = (int*)UnsafeUtility.Malloc(
-                (maxEntityId + 1) * sizeof(int),
-                UnsafeUtility.AlignOf<int>(),
-                Allocator.Persistent);
+            bufferIndices = (int*)UnsafeUtility.Malloc((maxEntityId + 1) * sizeof(int), UnsafeUtility.AlignOf<int>(), Allocator.Persistent);
 
             // Initialize all indices to -1 (indicating no component)
-            for (int i = 0; i <= maxEntityId; i++)
-            {
-                bufferIndices[i] = -1;
-            }
+            for (var i = 0; i <= maxEntityId; i++) bufferIndices[i] = -1;
         }
 
         public void Dispose()
@@ -88,20 +77,14 @@ namespace UnsafeEcs.Core.DynamicBuffers
             if (entityId <= maxEntityId)
                 return;
 
-            int newMaxEntityId = Math.Max(entityId, maxEntityId * 2);
-            int* newBufferIndices = (int*)UnsafeUtility.Malloc(
-                (newMaxEntityId + 1) * sizeof(int),
-                UnsafeUtility.AlignOf<int>(),
-                Allocator.Persistent);
+            var newMaxEntityId = Math.Max(entityId, maxEntityId * 2);
+            var newBufferIndices = (int*)UnsafeUtility.Malloc((newMaxEntityId + 1) * sizeof(int), UnsafeUtility.AlignOf<int>(), Allocator.Persistent);
 
             // Copy existing mappings
             UnsafeUtility.MemCpy(newBufferIndices, bufferIndices, (maxEntityId + 1) * sizeof(int));
 
             // Initialize new mappings to -1
-            for (int i = maxEntityId + 1; i <= newMaxEntityId; i++)
-            {
-                newBufferIndices[i] = -1;
-            }
+            for (var i = maxEntityId + 1; i <= newMaxEntityId; i++) newBufferIndices[i] = -1;
 
             // Free old array and update references
             UnsafeUtility.Free(bufferIndices, Allocator.Persistent);
@@ -114,19 +97,13 @@ namespace UnsafeEcs.Core.DynamicBuffers
             if (newCapacity <= capacity) return;
 
             // Resize buffer headers array
-            var newPtr = (byte*)UnsafeUtility.Malloc(
-                newCapacity * headerSize,
-                UnsafeUtility.AlignOf<BufferHeader>(),
-                Allocator.Persistent);
+            var newPtr = (byte*)UnsafeUtility.Malloc(newCapacity * headerSize, UnsafeUtility.AlignOf<BufferHeader>(), Allocator.Persistent);
             UnsafeUtility.MemCpy(newPtr, ptr, length * headerSize);
             UnsafeUtility.Free(ptr, Allocator.Persistent);
             ptr = newPtr;
 
             // Resize entityIds array
-            int* newEntityIds = (int*)UnsafeUtility.Malloc(
-                newCapacity * sizeof(int),
-                UnsafeUtility.AlignOf<int>(),
-                Allocator.Persistent);
+            var newEntityIds = (int*)UnsafeUtility.Malloc(newCapacity * sizeof(int), UnsafeUtility.AlignOf<int>(), Allocator.Persistent);
             UnsafeUtility.MemCpy(newEntityIds, entityIds, length * sizeof(int));
             UnsafeUtility.Free(entityIds, Allocator.Persistent);
             entityIds = newEntityIds;
@@ -141,24 +118,23 @@ namespace UnsafeEcs.Core.DynamicBuffers
 
             header->length = 0;
             header->capacity = initialBufferCapacity;
-            header->pointer = (byte*)UnsafeUtility.Malloc(
-                elementSize * initialBufferCapacity,
-                UnsafeUtility.AlignOf<byte>(),
-                Allocator.Persistent);
+            header->pointer = (byte*)UnsafeUtility.Malloc(elementSize * initialBufferCapacity, UnsafeUtility.AlignOf<byte>(), Allocator.Persistent);
         }
 
         // Add a buffer for an entity
-        public int AddEntityBuffer(int entityId, int initialBufferCapacity = 8)
+        public int Add(int entityId, int initialBufferCapacity = 8)
         {
+            // Resize if needed
+            if (length >= capacity)
+                Resize(math.max(4, capacity * 2));
+            
             // Ensure we have capacity for this entity ID
             EnsureEntityCapacity(entityId);
 
-            // Resize if needed
-            if (length >= capacity)
-                Resize(Math.Max(4, capacity * 2));
+
 
             // Initialize the buffer
-            int bufferIndex = length;
+            var bufferIndex = length;
             InitializeBuffer(bufferIndex, initialBufferCapacity);
 
             // Set up the mappings
@@ -176,7 +152,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
             if (entityId > maxEntityId || bufferIndices[entityId] < 0)
                 return false;
 
-            int index = bufferIndices[entityId];
+            var index = bufferIndices[entityId];
 
             // Free the buffer memory
             var header = (BufferHeader*)(ptr + index * headerSize);
@@ -187,7 +163,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
             }
 
             // Handle the swap-remove operation
-            int lastIndex = length - 1;
+            var lastIndex = length - 1;
 
             if (index < lastIndex)
             {
@@ -196,7 +172,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
                 UnsafeUtility.MemCpy(header, srcHeader, headerSize);
 
                 // Update the mappings for the moved entity
-                int lastEntityId = entityIds[lastIndex];
+                var lastEntityId = entityIds[lastIndex];
                 entityIds[index] = lastEntityId;
                 bufferIndices[lastEntityId] = index;
             }

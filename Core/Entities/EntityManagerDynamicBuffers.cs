@@ -1,6 +1,7 @@
 ﻿using System;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Mathematics;
 using UnsafeEcs.Core.Components;
 using UnsafeEcs.Core.DynamicBuffers;
 
@@ -10,38 +11,43 @@ namespace UnsafeEcs.Core.Entities
     {
         public DynamicBuffer<T> AddBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
-#if DEBUG
-            if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
-#endif
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             archetype.componentBits.SetComponent(typeIndex);
 
-            var createNewChunk = typeIndex >= chunks.Length;
-            if (createNewChunk)
-                chunks.Length = typeIndex + 1;
-
-            BufferChunk* chunk;
-            if (createNewChunk)
+            if (typeIndex >= chunks.Length)
             {
+                chunks.Resize(typeIndex + 1);
+
                 var elementSize = UnsafeUtility.SizeOf<T>();
-                chunk = (BufferChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BufferChunk>(), UnsafeUtility.AlignOf<BufferChunk>(), Allocator.Persistent);
-                *chunk = new BufferChunk(elementSize, InitialEntityCapacity);
-                var chunkUnion = ChunkUnion.FromBufferChunk(chunk);
-                chunks.Ptr[typeIndex] = chunkUnion;
-            }
-            else
-            {
-                chunk = chunks.Ptr[typeIndex].AsBufferChunk();
-                if (chunk == null)
-                {
-                    throw new InvalidOperationException($"Component type {typeIndex} is registered as a regular component but trying to add as a buffer.");
-                }
+                var bufferChunk = (BufferChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BufferChunk>(), UnsafeUtility.AlignOf<BufferChunk>(), Allocator.Persistent);
+                *bufferChunk = new BufferChunk(elementSize, 1, entity.id + 1);
+                chunks.Ptr[typeIndex] = ChunkUnion.FromBufferChunk(bufferChunk);
             }
 
-            int bufferIndex = chunk->AddEntityBuffer(entity.id);
-            var header = (BufferHeader*)(chunk->ptr + bufferIndex * chunk->headerSize);
+            var existingBufferChunk = chunks.Ptr[typeIndex].AsBufferChunk();
+            if (existingBufferChunk == null)
+                throw new InvalidOperationException($"Component type {typeIndex} is registered as a regular component but trying to add as a buffer.");
+
+            // Ensure there's capacity for one more buffer
+            var requiredChunkCapacity = existingBufferChunk->length + 1;
+            if (existingBufferChunk->capacity < requiredChunkCapacity)
+                existingBufferChunk->Resize(math.max(existingBufferChunk->capacity * 2, requiredChunkCapacity));
+
+            // Ensure capacity for this entity's ID
+            existingBufferChunk->EnsureEntityCapacity(entity.id);
+
+            // Add the buffer at the end
+            var bufferIndex = existingBufferChunk->length;
+            var initialBufferCapacity = 8;
+
+            existingBufferChunk->InitializeBuffer(bufferIndex, initialBufferCapacity);
+            existingBufferChunk->entityIds[bufferIndex] = entity.id;
+            existingBufferChunk->bufferIndices[entity.id] = bufferIndex;
+            existingBufferChunk->length++;
+
+            // Get buffer header pointer and create dynamic buffer
+            var header = (BufferHeader*)(existingBufferChunk->ptr + bufferIndex * existingBufferChunk->headerSize);
             var buffer = new DynamicBuffer<T>(header);
 
             IncrementComponentVersion(typeIndex);
@@ -87,7 +93,7 @@ namespace UnsafeEcs.Core.Entities
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
-            archetype.componentBits.SetComponent(typeIndex);
+            archetype.componentBits.RemoveComponent(typeIndex);
 
             if (typeIndex >= chunks.Length)
                 return;
@@ -118,7 +124,6 @@ namespace UnsafeEcs.Core.Entities
         {
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             foreach (var componentIndex in archetype.componentBits)
-            {
                 if (componentIndex < chunks.Length)
                 {
                     var bufferChunk = chunks.Ptr[componentIndex].AsBufferChunk();
@@ -128,7 +133,6 @@ namespace UnsafeEcs.Core.Entities
                         IncrementComponentVersion(componentIndex);
                     }
                 }
-            }
         }
 
         public bool TryGetBuffer<T>(Entity entity, out DynamicBuffer<T> buffer) where T : unmanaged, IBufferElement
@@ -228,7 +232,6 @@ namespace UnsafeEcs.Core.Entities
             {
                 var chunk = chunks.Ptr[typeIndex].AsBufferChunk();
                 if (chunk != null)
-                {
                     return new BufferArray<T>
                     {
                         ptr = chunk->ptr,
@@ -237,7 +240,6 @@ namespace UnsafeEcs.Core.Entities
                         bufferIndices = chunk->bufferIndices,
                         maxEntityId = chunk->maxEntityId
                     };
-                }
             }
 
             return default;

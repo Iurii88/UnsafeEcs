@@ -1,10 +1,11 @@
 ﻿using System;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Mathematics;
 
 namespace UnsafeEcs.Core.Components
 {
-    public unsafe partial struct ComponentChunk : IDisposable
+    public unsafe struct ComponentChunk : IDisposable
     {
         public void* ptr; // Component data
         public int length; // Current number of components
@@ -20,8 +21,8 @@ namespace UnsafeEcs.Core.Components
         {
             this.componentSize = componentSize;
             this.capacity = capacity;
-            this.length = 0;
-            this.maxEntityId = -1;
+            length = 0;
+            maxEntityId = -1;
 
             // Allocate component data buffer
             ptr = UnsafeUtility.Malloc(capacity * componentSize, 16, Allocator.Persistent);
@@ -30,9 +31,9 @@ namespace UnsafeEcs.Core.Components
             entityIds = (int*)UnsafeUtility.Malloc(capacity * sizeof(int), 16, Allocator.Persistent);
 
             // Initially allocate a small componentIndices array - will grow as needed
-            componentIndices = (int*)UnsafeUtility.Malloc(64 * sizeof(int), 16, Allocator.Persistent);
+            componentIndices = (int*)UnsafeUtility.Malloc(16 * sizeof(int), 16, Allocator.Persistent);
             // Initialize all indices to -1 (indicating no component for that entity)
-            UnsafeUtility.MemSet(componentIndices, 0xFF, 64 * sizeof(int));
+            UnsafeUtility.MemSet(componentIndices, 0xFF, 16 * sizeof(int));
         }
 
         public void Dispose()
@@ -80,8 +81,8 @@ namespace UnsafeEcs.Core.Components
         {
             if (entityId <= maxEntityId) return;
 
-            int currentSize = maxEntityId + 1;
-            int newSize = entityId + 1;
+            var currentSize = maxEntityId + 1;
+            var newSize = entityId + 1;
 
             var newIndices = (int*)UnsafeUtility.Malloc(newSize * sizeof(int), 16, Allocator.Persistent);
 
@@ -101,9 +102,7 @@ namespace UnsafeEcs.Core.Components
         {
             // Check if resize is needed
             if (length >= capacity)
-            {
-                Resize(Math.Max(capacity * 2, 4)); // Double capacity or use minimum size
-            }
+                Resize(math.max(capacity * 2, 4)); // Double capacity or use minimum size
 
             EnsureEntityCapacity(entityId);
 
@@ -112,11 +111,7 @@ namespace UnsafeEcs.Core.Components
             componentIndices[entityId] = length;
 
             // Copy component data
-            UnsafeUtility.MemCpy(
-                (byte*)ptr + length * componentSize,
-                componentData,
-                componentSize);
-
+            UnsafeUtility.MemCpy((byte*)ptr + length * componentSize, componentData, componentSize);
             length++;
         }
 
@@ -125,20 +120,17 @@ namespace UnsafeEcs.Core.Components
             if (entityId > maxEntityId || componentIndices[entityId] < 0)
                 return false;
 
-            int index = componentIndices[entityId];
-            int lastIndex = length - 1;
+            var index = componentIndices[entityId];
+            var lastIndex = length - 1;
 
             // If this isn't the last element, move the last element to fill the gap
             if (index < lastIndex)
             {
                 // Copy the last component data to the removed slot
-                UnsafeUtility.MemCpy(
-                    (byte*)ptr + index * componentSize,
-                    (byte*)ptr + lastIndex * componentSize,
-                    componentSize);
+                UnsafeUtility.MemCpy((byte*)ptr + index * componentSize, (byte*)ptr + lastIndex * componentSize, componentSize);
 
                 // Update indices for the moved entity
-                int lastEntityId = entityIds[lastIndex];
+                var lastEntityId = entityIds[lastIndex];
                 entityIds[index] = lastEntityId;
                 componentIndices[lastEntityId] = index;
             }
