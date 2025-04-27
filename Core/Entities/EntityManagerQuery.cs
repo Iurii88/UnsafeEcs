@@ -63,7 +63,7 @@ namespace UnsafeEcs.Core.Entities
             {
                 var job = new QueryJob
                 {
-                    managerPtr = GetManagerPtr(),
+                    managerPtr = m_ptr,
                     queryPtr = (EntityQuery*)UnsafeUtility.AddressOf(ref query),
                     cacheKeyValue = cacheKey
                 }.Schedule();
@@ -96,7 +96,7 @@ namespace UnsafeEcs.Core.Entities
         public ReadOnlySpan<Entity> QueryEntitiesReadOnly(ref EntityQuery query)
         {
             var queryEntities = QueryEntities(ref query);
-            return new ReadOnlySpan<Entity>(queryEntities.Ptr, queryEntities.Length);
+            return new ReadOnlySpan<Entity>(queryEntities.Ptr, queryEntities.m_length);
         }
 
         private void ExecuteQueryAndUpdateCache(ref EntityQuery query, ulong cacheKey)
@@ -114,21 +114,21 @@ namespace UnsafeEcs.Core.Entities
             }
             else
             {
-                var initialCapacity = Math.Min(64, entities.Length);
+                var initialCapacity = Math.Min(64, entities.m_length);
                 resultEntities = new UnsafeList<Entity>(initialCapacity, Allocator.Persistent);
                 componentVersions = new UnsafeHashMap<int, uint>(16, Allocator.Persistent);
             }
 
-            for (var i = 0; i < entities.Length; i++)
+            for (var i = 0; i < entities.m_length; i++)
             {
                 var entity = entities.Ptr[i];
-                if (entity.id >= deadEntities.Length || deadEntities.Ptr[entity.id])
+                if (entity.id >= deadEntities.m_length || deadEntities.Ptr[entity.id])
                     continue;
 
                 ref var archetype = ref entityArchetypes.Ptr[entity.id];
                 if (query.MatchesQuery(in archetype.componentBits))
                 {
-                    entity.managerPtr = GetManagerPtr();
+                    entity.managerPtr = m_ptr;
                     resultEntities.Add(entity);
                 }
             }
@@ -153,7 +153,7 @@ namespace UnsafeEcs.Core.Entities
 
         public EntityQuery CreateQuery()
         {
-            return new EntityQuery(GetManagerPtr());
+            return new EntityQuery(m_ptr);
         }
 
         [BurstCompile]

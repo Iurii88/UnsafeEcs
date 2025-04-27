@@ -22,6 +22,8 @@ namespace UnsafeEcs.Core.Entities
 
         private UnsafeHashMap<ulong, QueryCacheEntry> m_queryCache;
 
+        [NativeDisableUnsafePtrRestriction] private EntityManager* m_ptr;
+
         public EntityManager(int initialCapacity)
         {
             chunks = new UnsafeList<ChunkUnion>(InitialChunkCapacity, Allocator.Persistent);
@@ -34,6 +36,12 @@ namespace UnsafeEcs.Core.Entities
             nextId = new UnsafeItem<int>(0);
 
             m_queryCache = new UnsafeHashMap<ulong, QueryCacheEntry>(OtherCapacity, Allocator.Persistent);
+            m_ptr = null;
+        }
+
+        public void Initialize()
+        {
+            m_ptr = (EntityManager*)UnsafeUtility.AddressOf(ref this);
         }
 
         public void Dispose()
@@ -79,12 +87,6 @@ namespace UnsafeEcs.Core.Entities
                 return false;
 
             return !deadEntities.Ptr[entity.id];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private EntityManager* GetManagerPtr()
-        {
-            return (EntityManager*)UnsafeUtility.AddressOf(ref this);
         }
     }
 }

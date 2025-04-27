@@ -25,7 +25,7 @@ namespace UnsafeEcs.Core.Entities
                 var entity = new Entity
                 {
                     id = entityId, version = version,
-                    managerPtr = GetManagerPtr()
+                    managerPtr = m_ptr
                 };
 
                 entities.Ptr[entityId] = entity;
@@ -42,7 +42,7 @@ namespace UnsafeEcs.Core.Entities
                 var entity = new Entity
                 {
                     id = entityId, version = version,
-                    managerPtr = GetManagerPtr()
+                    managerPtr = m_ptr
                 };
 
                 entities.Add(entity);
@@ -70,7 +70,7 @@ namespace UnsafeEcs.Core.Entities
                 deadEntities.Resize(requiredCapacity);
             }
 
-            var managerPtr = GetManagerPtr();
+            var managerPtr = m_ptr;
 
             for (var i = 0; i < count; i++)
             {
