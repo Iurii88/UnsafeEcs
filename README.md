@@ -7,6 +7,9 @@
 
 > **Benchmark System**: 12th Gen Intel® Core™ i5-12600KF @ 3.70 GHz
 
+⚠️ PREVIEW VERSION NOTICE ⚠️
+This is a pre-release preview version of UnsafeEcs. Many features and APIs are subject to change. This documentation is provided for evaluation purposes only and is not representative of the final stable release.
+
 ## Introduction
 
 UnsafeEcs is a high-performance Entity-Component-System (ECS) library for Unity written in unsafe C# code. It enables direct, Burst-compatible operations on entities, allowing you to create/delete entities, add/remove components in burst-jobs, and perform other entity manipulations with exceptional speed and efficiency. Designed for Unity game development scenarios where performance is critical, such as complex simulations and games with thousands of objects.
