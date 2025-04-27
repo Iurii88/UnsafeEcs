@@ -13,8 +13,25 @@ namespace UnsafeEcs.Core.Entities
         public bool isBuffer; // Type discriminator flag
 
         // Helper methods to safely access the appropriate type
-        public ComponentChunk* AsComponentChunk() => isBuffer ? null : (ComponentChunk*)chunkPtr;
-        public BufferChunk* AsBufferChunk() => isBuffer ? (BufferChunk*)chunkPtr : null;
+        public ComponentChunk* AsComponentChunk()
+        {
+            return isBuffer ? null : (ComponentChunk*)chunkPtr;
+        }
+
+        public BufferChunk* AsBufferChunk()
+        {
+            return isBuffer ? (BufferChunk*)chunkPtr : null;
+        }
+
+        public uint GetVersion()
+        {
+            if (chunkPtr == null)
+                return 0;
+            
+            if (!isBuffer)
+                return ((ComponentChunk*)chunkPtr)->version;
+            return ((BufferChunk*)chunkPtr)->version;
+        }
 
         // Factory methods to create instances
         public static ChunkUnion FromComponentChunk(ComponentChunk* chunk)

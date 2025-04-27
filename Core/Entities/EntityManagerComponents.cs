@@ -19,21 +19,27 @@ namespace UnsafeEcs.Core.Entities
             ref var archetype = ref entityArchetypes.Ptr[entity.id];
             archetype.componentBits.SetComponent(typeIndex);
 
-            if (typeIndex >= chunks.m_length)
+            // Use the helper method to ensure the component chunk exists
+            EnsureComponentChunkExists(typeIndex);
+
+            // Get the chunk and add the component
+            var existingChunk = chunks.Ptr[typeIndex].AsComponentChunk();
+            existingChunk->Add(entity.id, UnsafeUtility.AddressOf(ref component));
+        }
+
+
+        private void EnsureComponentChunkExists(int typeIndex)
+        {
+            if (typeIndex >= chunks.Length)
             {
                 chunks.Resize(typeIndex + 1);
 
-                var size = UnsafeUtility.SizeOf<T>();
+                var size = TypeManager.GetTypeSizeByIndex(typeIndex);
                 var stackChunk = new ComponentChunk(size, InitialEntityCapacity);
                 var chunk = (ComponentChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<ComponentChunk>(), UnsafeUtility.AlignOf<ComponentChunk>(), Allocator.Persistent);
                 UnsafeUtility.CopyStructureToPtr(ref stackChunk, chunk);
                 chunks.Ptr[typeIndex] = ChunkUnion.FromComponentChunk(chunk);
             }
-
-            var existingChunk = chunks.Ptr[typeIndex].AsComponentChunk();
-            existingChunk->Add(entity.id, UnsafeUtility.AddressOf(ref component));
-
-            IncrementComponentVersion(typeIndex);
         }
 
         public void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent
@@ -48,7 +54,6 @@ namespace UnsafeEcs.Core.Entities
             archetype.componentBits.RemoveComponent(typeIndex);
 
             RemoveComponentInternal(entity, typeIndex);
-            IncrementComponentVersion(typeIndex);
         }
 
         private void RemoveComponentInternal(Entity entity, int typeIndex)
@@ -187,25 +192,17 @@ namespace UnsafeEcs.Core.Entities
             var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
             var componentPtr = chunk->GetComponentPtr(entity.id);
             UnsafeUtility.CopyStructureToPtr(ref component, componentPtr);
-            IncrementComponentVersion(typeIndex);
         }
 
         public ComponentArray<T> GetComponentArray<T>() where T : unmanaged, IComponent
         {
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
-
+            EnsureComponentChunkExists(typeIndex);
             if (typeIndex < chunks.Length)
             {
                 var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
                 if (chunk != null)
-                    return new ComponentArray<T>
-                    {
-                        ptr = chunk->ptr,
-                        length = chunk->length,
-                        componentSize = chunk->componentSize,
-                        componentIndices = chunk->componentIndices,
-                        maxEntityId = chunk->maxEntityId
-                    };
+                    return new ComponentArray<T>(chunk);
             }
 
             return default;
@@ -219,10 +216,7 @@ namespace UnsafeEcs.Core.Entities
                 {
                     var chunk = chunks.Ptr[componentIndex].AsComponentChunk();
                     if (chunk != null)
-                    {
                         chunk->Remove(entity.id);
-                        IncrementComponentVersion(componentIndex);
-                    }
                 }
 
             archetype.componentBits.Clear();

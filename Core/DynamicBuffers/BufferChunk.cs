@@ -17,6 +17,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
         public int* entityIds; // Maps buffer index -> entity id (length-sized)
         public int* bufferIndices; // Maps entity id -> buffer index (maxEntityId-sized)
         public int maxEntityId; // Current maximum entity ID
+        public uint version;
 
         public BufferChunk(int elementSize, int initialCapacity, int maxInitialEntityId = 1024)
         {
@@ -25,6 +26,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
             capacity = initialCapacity;
             length = 0;
             maxEntityId = maxInitialEntityId;
+            version = 0;
 
             // Allocate memory for buffer headers
             ptr = (byte*)UnsafeUtility.Malloc(capacity * headerSize, UnsafeUtility.AlignOf<BufferHeader>(), Allocator.Persistent);
@@ -127,11 +129,9 @@ namespace UnsafeEcs.Core.DynamicBuffers
             // Resize if needed
             if (length >= capacity)
                 Resize(math.max(4, capacity * 2));
-            
+
             // Ensure we have capacity for this entity ID
             EnsureEntityCapacity(entityId);
-
-
 
             // Initialize the buffer
             var bufferIndex = length;
@@ -142,6 +142,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
             bufferIndices[entityId] = bufferIndex;
 
             length++;
+            version++;
             return bufferIndex;
         }
 
@@ -180,6 +181,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
             // Clear the mapping for the removed entity
             bufferIndices[entityId] = -1;
             length--;
+            version++;
 
             return true;
         }

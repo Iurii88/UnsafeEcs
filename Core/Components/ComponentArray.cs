@@ -5,22 +5,23 @@ using UnsafeEcs.Core.Entities;
 
 namespace UnsafeEcs.Core.Components
 {
-    public unsafe partial struct ComponentArray<T> where T : unmanaged
+    public unsafe struct ComponentArray<T> where T : unmanaged
     {
-        [NativeDisableUnsafePtrRestriction] public void* ptr;
-        public int length;
-        public int componentSize;
-        [NativeDisableUnsafePtrRestriction] public int* componentIndices; // Maps entity ID to component index
-        public int maxEntityId; // Highest entity ID in the mapping
+        [NativeDisableUnsafePtrRestriction] private readonly ComponentChunk* m_chunkPtr;
 
         public ref T this[int index]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                var itemPtr = (byte*)ptr + index * componentSize;
+                var itemPtr = (byte*)m_chunkPtr->ptr + index * m_chunkPtr->componentSize;
                 return ref ((T*)itemPtr)[0];
             }
+        }
+
+        public ComponentArray(ComponentChunk* chunk)
+        {
+            m_chunkPtr = chunk;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -28,11 +29,11 @@ namespace UnsafeEcs.Core.Components
         {
 #if DEBUG
             // Check bounds first to avoid memory access violation
-            if (entity.id > maxEntityId)
+            if (entity.id > m_chunkPtr->maxEntityId)
                 throw new InvalidOperationException($"Entity {entity.id} does not have this component");
 #endif
 
-            int index = componentIndices[entity.id];
+            var index = m_chunkPtr->componentIndices[entity.id];
 #if DEBUG
             if (index < 0)
                 throw new InvalidOperationException($"Entity {entity.id} does not have this component");
@@ -41,24 +42,54 @@ namespace UnsafeEcs.Core.Components
             return ref this[index];
         }
 
-        public bool Has(Entity entity)
+        public void Remove(Entity entity)
         {
-            return entity.id <= maxEntityId && componentIndices[entity.id] >= 0;
+            if (!m_chunkPtr->Remove(entity.id))
+            {
+#if DEBUG
+                throw new InvalidOperationException($"Cannot remove component for entity {entity.id}: component does not exist");
+#endif
+            }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(Entity entity)
+        {
+            Add(entity, new T());
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(Entity entity, T component)
+        {
+            m_chunkPtr->Add(entity.id, UnsafeUtility.AddressOf(ref component));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Has(Entity entity)
+        {
+            return m_chunkPtr->HasComponent(entity.id);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryGet(Entity entity, out T component)
         {
             component = default;
 
-            if (entity.id > maxEntityId)
+            if (entity.id > m_chunkPtr->maxEntityId)
                 return false;
 
-            int index = componentIndices[entity.id];
+            var index = m_chunkPtr->componentIndices[entity.id];
             if (index < 0)
                 return false;
 
             component = this[index];
             return true;
         }
+
+        // Forwarding properties from the chunk for convenience
+        public int Length => m_chunkPtr->length;
+        public int Capacity => m_chunkPtr->capacity;
+        public int ComponentSize => m_chunkPtr->componentSize;
     }
 }

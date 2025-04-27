@@ -37,13 +37,18 @@ namespace UnsafeEcs.Core.Entities
 
             foreach (var typeIndex in query.componentBits)
             {
-                if (typeIndex >= m_componentVersions.Length ||
-                    !cacheEntry.componentVersions.TryGetValue(typeIndex, out var cachedVersion))
+                if (chunks.m_length <= typeIndex)
+                    break;
+
+                ref var chunk = ref chunks.Ptr[typeIndex];
+                var version = chunk.GetVersion();
+
+                if (!cacheEntry.componentVersions.TryGetValue(typeIndex, out var cachedVersion))
                 {
                     return false;
                 }
 
-                if (m_componentVersions[typeIndex] != cachedVersion)
+                if (version != cachedVersion)
                 {
                     return false;
                 }
@@ -72,13 +77,13 @@ namespace UnsafeEcs.Core.Entities
 
             return cacheEntry.entities;
         }
-        
+
         public UnsafeList<Entity> QueryEntitiesWithoutJob(ref EntityQuery query)
         {
             if (!ValidateQueryCache(ref query, out var cacheKey, out var cacheEntry))
             {
                 ExecuteQueryAndUpdateCache(ref query, cacheKey);
-                
+
                 if (!m_queryCache.TryGetValue(cacheKey, out cacheEntry))
                 {
                     throw new InvalidOperationException("Query cache entry not found after job completion");
@@ -87,7 +92,6 @@ namespace UnsafeEcs.Core.Entities
 
             return cacheEntry.entities;
         }
-
 
         public ReadOnlySpan<Entity> QueryEntitiesReadOnly(ref EntityQuery query)
         {
@@ -131,41 +135,20 @@ namespace UnsafeEcs.Core.Entities
 
             foreach (var typeIndex in query.componentBits)
             {
-                if (typeIndex >= m_componentVersions.Length)
+                if (chunks.m_length > typeIndex)
                 {
-                    var oldLength = m_componentVersions.Length;
-                    m_componentVersions.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
-
-                    for (var i = oldLength; i <= typeIndex; i++)
-                        m_componentVersions[i] = 1;
+                    ref var chunk = ref chunks.Ptr[typeIndex];
+                    componentVersions[typeIndex] = chunk.GetVersion();
                 }
-
-                componentVersions[typeIndex] = m_componentVersions[typeIndex];
             }
 
             var cacheEntry = new QueryCacheEntry
             {
                 entities = resultEntities,
-                componentVersions = componentVersions,
+                componentVersions = componentVersions
             };
 
             m_queryCache[cacheKey] = cacheEntry;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void IncrementComponentVersion(int typeIndex)
-        {
-            var length = m_componentVersions.m_length;
-            if (typeIndex >= length)
-            {
-                var oldLength = length;
-                m_componentVersions.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
-
-                for (var i = oldLength; i <= typeIndex; i++)
-                    m_componentVersions.Ptr[i] = 1;
-            }
-
-            m_componentVersions.Ptr[typeIndex]++;
         }
 
         public EntityQuery CreateQuery()

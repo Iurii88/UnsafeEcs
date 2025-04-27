@@ -8,8 +8,7 @@ namespace UnsafeEcs.Core.Entities
     public unsafe partial struct EntityManager
     {
         public const int InitialEntityCapacity = 0;
-        private const int InitialComponentChunkCapacity = 0;
-        private const int InitialBufferChunkCapacity = 0;
+        private const int InitialChunkCapacity = 0;
         private const int OtherCapacity = 0;
 
         public UnsafeList<ChunkUnion> chunks;
@@ -22,11 +21,10 @@ namespace UnsafeEcs.Core.Entities
         public UnsafeList<Entity> freeEntities;
 
         private UnsafeHashMap<ulong, QueryCacheEntry> m_queryCache;
-        private UnsafeList<uint> m_componentVersions;
 
         public EntityManager(int initialCapacity)
         {
-            chunks = new UnsafeList<ChunkUnion>(InitialComponentChunkCapacity, Allocator.Persistent);
+            chunks = new UnsafeList<ChunkUnion>(InitialChunkCapacity, Allocator.Persistent);
 
             entities = new UnsafeList<Entity>(initialCapacity, Allocator.Persistent);
             entityArchetypes = new UnsafeList<EntityArchetype>(initialCapacity, Allocator.Persistent);
@@ -34,12 +32,6 @@ namespace UnsafeEcs.Core.Entities
 
             freeEntities = new UnsafeList<Entity>(OtherCapacity, Allocator.Persistent);
             nextId = new UnsafeItem<int>(0);
-
-            // Initialize query cache
-            m_componentVersions = new UnsafeList<uint>(32, Allocator.Persistent);
-            m_componentVersions.Resize(32, NativeArrayOptions.ClearMemory);
-            for (int i = 0; i < m_componentVersions.Length; i++)
-                m_componentVersions[i] = 1;
 
             m_queryCache = new UnsafeHashMap<ulong, QueryCacheEntry>(OtherCapacity, Allocator.Persistent);
         }
@@ -60,8 +52,6 @@ namespace UnsafeEcs.Core.Entities
             foreach (var kv in m_queryCache)
                 kv.Value.Dispose();
             m_queryCache.Dispose();
-
-            m_componentVersions.Dispose();
         }
 
         public void Clear()
@@ -80,8 +70,6 @@ namespace UnsafeEcs.Core.Entities
             foreach (var kv in m_queryCache)
                 kv.Value.Clear();
             m_queryCache.Clear();
-
-            m_componentVersions.Clear();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -17,12 +17,15 @@ namespace UnsafeEcs.Core.Components
         public int* componentIndices; // Maps entity ID -> component index (sparse set)
         public int maxEntityId; // Tracks the highest entity ID to resize componentIndices array
 
+        public uint version;
+
         public ComponentChunk(int componentSize, int capacity)
         {
             this.componentSize = componentSize;
             this.capacity = capacity;
             length = 0;
             maxEntityId = -1;
+            version = 0;
 
             // Allocate component data buffer
             ptr = UnsafeUtility.Malloc(capacity * componentSize, 16, Allocator.Persistent);
@@ -113,6 +116,7 @@ namespace UnsafeEcs.Core.Components
             // Copy component data
             UnsafeUtility.MemCpy((byte*)ptr + length * componentSize, componentData, componentSize);
             length++;
+            version++;
         }
 
         public bool Remove(int entityId)
@@ -138,7 +142,7 @@ namespace UnsafeEcs.Core.Components
             // Mark this entity as having no component
             componentIndices[entityId] = -1;
             length--;
-
+            version++;
             return true;
         }
 

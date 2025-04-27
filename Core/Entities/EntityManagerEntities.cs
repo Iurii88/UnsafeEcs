@@ -157,9 +157,9 @@ namespace UnsafeEcs.Core.Entities
                         existingBufferChunk->bufferIndices[entityId] = bufferIndex;
                         existingBufferChunk->length++;
                     }
-                }
 
-                IncrementComponentVersion(typeIndex);
+                    existingBufferChunk->version++;
+                }
             }
 
             return result;
