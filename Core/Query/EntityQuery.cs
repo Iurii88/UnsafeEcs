@@ -316,9 +316,19 @@ namespace UnsafeEcs.Core.Entities
             return m_manager->QueryEntities(ref this);
         }
 
+        public UnsafeList<Entity> Fetch<TFilter>(TFilter filter) where TFilter : unmanaged, IQueryFilter
+        {
+            return m_manager->QueryEntities<TFilter>(ref this, ref filter);
+        }
+
         public UnsafeList<Entity> FetchWithoutJob()
         {
             return m_manager->QueryEntitiesWithoutJob(ref this);
+        }
+
+        public UnsafeList<Entity> FetchWithoutJob<TFilter>(TFilter filter) where TFilter : unmanaged, IQueryFilter
+        {
+            return m_manager->QueryEntitiesWithoutJob<TFilter>(ref this, ref filter);
         }
 
         public override bool Equals(object obj)

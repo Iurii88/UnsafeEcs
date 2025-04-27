@@ -70,10 +70,26 @@ namespace UnsafeEcs.Core.Entities
                 job.Complete();
 
                 if (!m_queryCache.TryGetValue(cacheKey, out cacheEntry))
-                {
                     throw new InvalidOperationException("Query cache entry not found after job completion");
-                }
             }
+
+            return cacheEntry.entities;
+        }
+
+        public UnsafeList<Entity> QueryEntities<TFilter>(ref EntityQuery query, ref TFilter filter) where TFilter : unmanaged, IQueryFilter
+        {
+            var cacheKey = (ulong)query.GetHashCode();
+            var job = new QueryJob<TFilter>
+            {
+                managerPtr = m_managerPtr,
+                queryPtr = (EntityQuery*)UnsafeUtility.AddressOf(ref query),
+                filterPtr = (TFilter*)UnsafeUtility.AddressOf(ref filter),
+                cacheKeyValue = cacheKey
+            }.Schedule();
+            job.Complete();
+
+            if (!m_queryCache.TryGetValue(cacheKey, out var cacheEntry))
+                throw new InvalidOperationException("Query cache entry not found after job completion");
 
             return cacheEntry.entities;
         }
@@ -83,6 +99,21 @@ namespace UnsafeEcs.Core.Entities
             if (!ValidateQueryCache(ref query, out var cacheKey, out var cacheEntry))
             {
                 ExecuteQueryAndUpdateCache(ref query, cacheKey);
+
+                if (!m_queryCache.TryGetValue(cacheKey, out cacheEntry))
+                {
+                    throw new InvalidOperationException("Query cache entry not found after job completion");
+                }
+            }
+
+            return cacheEntry.entities;
+        }
+
+        public UnsafeList<Entity> QueryEntitiesWithoutJob<TFilter>(ref EntityQuery query, ref TFilter filter) where TFilter : unmanaged, IQueryFilter
+        {
+            if (!ValidateQueryCache(ref query, out var cacheKey, out var cacheEntry))
+            {
+                ExecuteQueryAndUpdateCache(ref query, cacheKey, ref filter);
 
                 if (!m_queryCache.TryGetValue(cacheKey, out cacheEntry))
                 {
@@ -151,6 +182,58 @@ namespace UnsafeEcs.Core.Entities
             m_queryCache[cacheKey] = cacheEntry;
         }
 
+        private void ExecuteQueryAndUpdateCache<TFilter>(ref EntityQuery query, ulong cacheKey, ref TFilter filter) where TFilter : unmanaged, IQueryFilter
+        {
+            UnsafeList<Entity> resultEntities;
+            UnsafeHashMap<int, uint> componentVersions;
+
+            var reuseMemory = m_queryCache.TryGetValue(cacheKey, out var existingEntry);
+            if (reuseMemory)
+            {
+                resultEntities = existingEntry.entities;
+                componentVersions = existingEntry.componentVersions;
+                resultEntities.Clear();
+                componentVersions.Clear();
+            }
+            else
+            {
+                var initialCapacity = Math.Min(16, entities.m_length);
+                resultEntities = new UnsafeList<Entity>(initialCapacity, Allocator.Persistent);
+                componentVersions = new UnsafeHashMap<int, uint>(16, Allocator.Persistent);
+            }
+
+            for (var i = 0; i < entities.m_length; i++)
+            {
+                var entity = entities.Ptr[i];
+                if (entity.id >= deadEntities.m_length || deadEntities.Ptr[entity.id])
+                    continue;
+
+                ref var archetype = ref entityArchetypes.Ptr[entity.id];
+                if (query.MatchesQuery(in archetype.componentBits) && filter.Validate(entity))
+                {
+                    entity.managerPtr = m_managerPtr;
+                    resultEntities.Add(entity);
+                }
+            }
+
+            foreach (var typeIndex in query.componentBits)
+            {
+                if (chunks.m_length > typeIndex)
+                {
+                    ref var chunk = ref chunks.Ptr[typeIndex];
+                    componentVersions[typeIndex] = chunk.GetVersion();
+                }
+            }
+
+            var cacheEntry = new QueryCacheEntry
+            {
+                entities = resultEntities,
+                componentVersions = componentVersions
+            };
+
+            m_queryCache[cacheKey] = cacheEntry;
+        }
+
         public EntityQuery CreateQuery()
         {
             return new EntityQuery(m_managerPtr);
@@ -167,6 +250,22 @@ namespace UnsafeEcs.Core.Entities
             {
                 ref var query = ref UnsafeUtility.AsRef<EntityQuery>(queryPtr);
                 managerPtr->ExecuteQueryAndUpdateCache(ref query, cacheKeyValue);
+            }
+        }
+
+        [BurstCompile]
+        private struct QueryJob<TFilter> : IJob where TFilter : unmanaged, IQueryFilter
+        {
+            [NativeDisableUnsafePtrRestriction] public EntityQuery* queryPtr;
+            [NativeDisableUnsafePtrRestriction] public EntityManager* managerPtr;
+            [NativeDisableUnsafePtrRestriction] public TFilter* filterPtr;
+            public ulong cacheKeyValue;
+
+            public void Execute()
+            {
+                ref var query = ref UnsafeUtility.AsRef<EntityQuery>(queryPtr);
+                ref var filter = ref UnsafeUtility.AsRef<TFilter>(filterPtr);
+                managerPtr->ExecuteQueryAndUpdateCache(ref query, cacheKeyValue, ref filter);
             }
         }
     }
