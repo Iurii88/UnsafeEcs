@@ -25,23 +25,36 @@ namespace UnsafeEcs.Core.Components
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref T Get(Entity entity)
+        public ref T Get(int entityId)
         {
 #if DEBUG
             // Check bounds first to avoid memory access violation
-            if (entity.id > m_chunkPtr->maxEntityId)
-                throw new InvalidOperationException($"Entity {entity.id} does not have this component");
+            if (entityId > m_chunkPtr->maxEntityId)
+                throw new InvalidOperationException($"Entity {entityId} does not have this component");
 #endif
 
-            var index = m_chunkPtr->componentIndices[entity.id];
+            var index = m_chunkPtr->componentIndices[entityId];
 #if DEBUG
             if (index < 0)
-                throw new InvalidOperationException($"Entity {entity.id} does not have this component");
+                throw new InvalidOperationException($"Entity {entityId} does not have this component");
 #endif
 
             return ref this[index];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T Get(Entity entity)
+        {
+            return ref Get(entity.id);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Remove(int entityId)
+        {
+            return m_chunkPtr->Remove(entityId);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Remove(Entity entity)
         {
             return m_chunkPtr->Remove(entity.id);
@@ -53,11 +66,22 @@ namespace UnsafeEcs.Core.Components
             m_chunkPtr->Add(entity.id, cleanComponent);
         }
 
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add(Entity entity, ref T component)
         {
             m_chunkPtr->Add(entity.id, UnsafeUtility.AddressOf(ref component));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(int entityId, bool cleanComponent = false)
+        {
+            m_chunkPtr->Add(entityId, cleanComponent);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(int entityId, ref T component)
+        {
+            m_chunkPtr->Add(entityId, UnsafeUtility.AddressOf(ref component));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
