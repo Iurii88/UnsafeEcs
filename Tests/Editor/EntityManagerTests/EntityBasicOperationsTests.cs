@@ -30,7 +30,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests
             var entity1 = entityManager.CreateEntity();
             var id1 = entity1.id;
             entityManager.DestroyEntity(entity1);
-            
+
             var entity2 = entityManager.CreateEntity();
             Assert.AreEqual(id1, entity2.id);
             Assert.AreEqual(2, entity2.version); // Version should increment

@@ -6,7 +6,7 @@ namespace UnsafeEcs.Core.Systems
     public abstract class SystemGroup : SystemBase
     {
         public readonly List<SystemBase> systems = new();
-        
+
         public void AddSystem(SystemBase system)
         {
             systems.Add(system);
@@ -17,7 +17,7 @@ namespace UnsafeEcs.Core.Systems
                 system.OnAwake();
             }
         }
-        
+
         public void RemoveSystem(SystemBase system)
         {
             system.OnDestroy();
@@ -35,6 +35,7 @@ namespace UnsafeEcs.Core.Systems
                     system.world = world;
                     world.systemByType[system.GetType()] = system;
                 }
+
                 system.OnAwake();
             }
         }

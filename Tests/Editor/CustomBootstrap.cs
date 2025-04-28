@@ -11,7 +11,7 @@ namespace UnsafeEcs.Tests.Editor
             var gameAssembly = Assembly.Load("UnsafeEcs.EditorTests");
             var assemblies = new[]
             {
-                gameAssembly,
+                gameAssembly
             };
             WorldBootstrap.InitializeForTests(assemblies, WorldBootstrap.LogLevel.Minimal);
         }

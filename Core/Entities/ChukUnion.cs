@@ -27,7 +27,7 @@ namespace UnsafeEcs.Core.Entities
         {
             if (chunkPtr == null)
                 return 0;
-            
+
             if (!isBuffer)
                 return ((ComponentChunk*)chunkPtr)->version;
             return ((BufferChunk*)chunkPtr)->version;

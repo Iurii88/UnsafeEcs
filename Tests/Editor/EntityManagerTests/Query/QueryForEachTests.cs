@@ -15,7 +15,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
             var entity2 = CreateEntityWithComponents(typeof(ComponentA), typeof(ComponentB));
             CreateEntityWithComponents(typeof(ComponentB)); // Should not match
 
-            int count = 0;
+            var count = 0;
             var query = CreateTestQuery().With<ComponentA>();
             query.ForEach((ref Entity entity) =>
             {
@@ -32,7 +32,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
             var entity = CreateEntityWithComponents(typeof(ComponentA));
             entityManager.SetComponent(entity, new ComponentA());
 
-            bool executed = false;
+            var executed = false;
             var query = CreateTestQuery().With<ComponentA>();
             query.ForEach((ref Entity e, ref ComponentA _) =>
             {
@@ -48,7 +48,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
         {
             var entity = CreateEntityWithComponents(typeof(ComponentA), typeof(ComponentB));
 
-            bool executed = false;
+            var executed = false;
             var query = CreateTestQuery().With<ComponentA, ComponentB>();
             query.ForEach((ref Entity e, ref ComponentA _, ref ComponentB _) =>
             {

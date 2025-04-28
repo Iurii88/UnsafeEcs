@@ -3,7 +3,7 @@ using UnsafeEcs.Core.Components;
 
 namespace UnsafeEcs.Core.Entities
 {
-    public partial struct EntityArchetypeBuilder
+    public struct EntityArchetypeBuilder
     {
         private ComponentBits m_componentBits;
 

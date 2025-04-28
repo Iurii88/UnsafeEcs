@@ -14,18 +14,18 @@ namespace UnsafeEcs.Serialization
         public static byte[] Serialize()
         {
             // First serialize component type info
-            byte[] typeInfoData = TypeManagerSerializer.SerializeTypeInfo();
+            var typeInfoData = TypeManagerSerializer.SerializeTypeInfo();
 
             // Then serialize all worlds
             var worldsData = new List<byte[]>(WorldManager.Worlds.Count);
             foreach (var world in WorldManager.Worlds)
             {
-                byte[] worldBytes = WorldSerializer.Serialize(world);
+                var worldBytes = WorldSerializer.Serialize(world);
                 worldsData.Add(worldBytes);
             }
 
             // Calculate total size needed
-            int totalSize =
+            var totalSize =
                 4 + // magic
                 4 + // version
                 4 + // type info size
@@ -40,7 +40,7 @@ namespace UnsafeEcs.Serialization
 
             // Allocate output array
             var output = new byte[totalSize];
-            int position = 0;
+            var position = 0;
 
             // Write magic number
             Buffer.BlockCopy(BitConverter.GetBytes(MagicNumber), 0, output, position, 4);
@@ -78,24 +78,24 @@ namespace UnsafeEcs.Serialization
         public static void Deserialize(MemoryRegion memoryRegion)
         {
             var ptr = memoryRegion.ptr;
-            int position = 0;
+            var position = 0;
 
             // Read magic number
-            int magic = *(int*)(ptr + position);
+            var magic = *(int*)(ptr + position);
             position += 4;
 
             if (magic != MagicNumber)
                 throw new InvalidOperationException("Invalid data format");
 
             // Read version
-            int version = *(int*)(ptr + position);
+            var version = *(int*)(ptr + position);
             position += 4;
 
             if (version != Version)
                 throw new InvalidOperationException($"Unsupported version: {version}");
 
             // Read type info size
-            int typeInfoSize = *(int*)(ptr + position);
+            var typeInfoSize = *(int*)(ptr + position);
             position += 4;
 
             // Deserialize type info
@@ -111,14 +111,14 @@ namespace UnsafeEcs.Serialization
             {
                 var worldDataSize = *(int*)(ptr + position);
                 position += 4;
-                
+
                 var world = WorldManager.Worlds[i];
                 foreach (var rootSystem in world.rootSystems)
                     rootSystem.OnDestroy();
                 WorldSerializer.Deserialize(new MemoryRegion(ptr + position, worldDataSize), world);
                 foreach (var rootSystem in world.rootSystems)
                     rootSystem.OnAwake();
-                
+
                 position += worldDataSize;
             }
         }

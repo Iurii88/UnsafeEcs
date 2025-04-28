@@ -73,50 +73,66 @@ namespace UnsafeEcs.Core.Components
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void ClearAll() => (part0, part1, part2, part3) = (0, 0, 0, 0);
+        public void ClearAll()
+        {
+            (part0, part1, part2, part3) = (0, 0, 0, 0);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly bool HasAny(in ComponentBits other) =>
-            (part0 & other.part0) != 0 ||
-            (part1 & other.part1) != 0 ||
-            (part2 & other.part2) != 0 ||
-            (part3 & other.part3) != 0;
+        public readonly bool HasAny(in ComponentBits other)
+        {
+            return (part0 & other.part0) != 0 ||
+                   (part1 & other.part1) != 0 ||
+                   (part2 & other.part2) != 0 ||
+                   (part3 & other.part3) != 0;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public readonly bool HasAll(in ComponentBits other) =>
-            (part0 & other.part0) == other.part0 &&
-            (part1 & other.part1) == other.part1 &&
-            (part2 & other.part2) == other.part2 &&
-            (part3 & other.part3) == other.part3;
+        public readonly bool HasAll(in ComponentBits other)
+        {
+            return (part0 & other.part0) == other.part0 &&
+                   (part1 & other.part1) == other.part1 &&
+                   (part2 & other.part2) == other.part2 &&
+                   (part3 & other.part3) == other.part3;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ComponentBits operator &(in ComponentBits left, in ComponentBits right) =>
-            new()
+        public static ComponentBits operator &(in ComponentBits left, in ComponentBits right)
+        {
+            return new ComponentBits
             {
                 part0 = left.part0 & right.part0,
                 part1 = left.part1 & right.part1,
                 part2 = left.part2 & right.part2,
                 part3 = left.part3 & right.part3
             };
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ComponentBits operator |(in ComponentBits left, in ComponentBits right) =>
-            new()
+        public static ComponentBits operator |(in ComponentBits left, in ComponentBits right)
+        {
+            return new ComponentBits
             {
                 part0 = left.part0 | right.part0,
                 part1 = left.part1 | right.part1,
                 part2 = left.part2 | right.part2,
                 part3 = left.part3 | right.part3
             };
+        }
 
-        public readonly override bool Equals(object obj) =>
-            obj is ComponentBits bits &&
-            part0 == bits.part0 &&
-            part1 == bits.part1 &&
-            part2 == bits.part2 &&
-            part3 == bits.part3;
+        public readonly override bool Equals(object obj)
+        {
+            return obj is ComponentBits bits &&
+                   part0 == bits.part0 &&
+                   part1 == bits.part1 &&
+                   part2 == bits.part2 &&
+                   part3 == bits.part3;
+        }
 
-        public readonly override int GetHashCode() => HashCode.Combine(part0, part1, part2, part3);
+        public readonly override int GetHashCode()
+        {
+            return HashCode.Combine(part0, part1, part2, part3);
+        }
 
         public struct BitEnumerator
         {
@@ -158,7 +174,10 @@ namespace UnsafeEcs.Core.Components
             }
         }
 
-        public BitEnumerator GetEnumerator() => new(this);
+        public BitEnumerator GetEnumerator()
+        {
+            return new BitEnumerator(this);
+        }
 
         public bool TryGetNextBit(ref int current, out int nextBit)
         {
@@ -209,17 +228,21 @@ namespace UnsafeEcs.Core.Components
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator ==(in ComponentBits left, in ComponentBits right) =>
-            left.part0 == right.part0 &&
-            left.part1 == right.part1 &&
-            left.part2 == right.part2 &&
-            left.part3 == right.part3;
+        public static bool operator ==(in ComponentBits left, in ComponentBits right)
+        {
+            return left.part0 == right.part0 &&
+                   left.part1 == right.part1 &&
+                   left.part2 == right.part2 &&
+                   left.part3 == right.part3;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool operator !=(in ComponentBits left, in ComponentBits right) =>
-            left.part0 != right.part0 ||
-            left.part1 != right.part1 ||
-            left.part2 != right.part2 ||
-            left.part3 != right.part3;
+        public static bool operator !=(in ComponentBits left, in ComponentBits right)
+        {
+            return left.part0 != right.part0 ||
+                   left.part1 != right.part1 ||
+                   left.part2 != right.part2 ||
+                   left.part3 != right.part3;
+        }
     }
 }

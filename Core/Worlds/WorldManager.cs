@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnsafeEcs.Core.Components;
-using UnsafeEcs.Core.Entities;
 using Object = UnityEngine.Object;
 
 namespace UnsafeEcs.Core.Worlds
@@ -20,7 +19,7 @@ namespace UnsafeEcs.Core.Worlds
             worldUpdater.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
             Object.DontDestroyOnLoad(go);
         }
-        
+
         public static void InitializeForTests()
         {
             TypeManager.Initialize();
@@ -85,11 +84,6 @@ namespace UnsafeEcs.Core.Worlds
 
     internal class WorldUpdater : MonoBehaviour
     {
-        private void OnDestroy()
-        {
-            WorldManager.OnDestroy();
-        }
-
         private void Update()
         {
             WorldManager.Update(Time.deltaTime);
@@ -98,6 +92,11 @@ namespace UnsafeEcs.Core.Worlds
         private void FixedUpdate()
         {
             WorldManager.FixedUpdate(Time.fixedDeltaTime);
+        }
+
+        private void OnDestroy()
+        {
+            WorldManager.OnDestroy();
         }
     }
 }

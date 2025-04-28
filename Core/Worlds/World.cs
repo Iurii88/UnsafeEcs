@@ -9,18 +9,16 @@ namespace UnsafeEcs.Core.Worlds
 {
     public class World : IDisposable
     {
-        public float deltaTime;
-        public float elapsedDeltaTime;
-
-        public float fixedDeltaTime;
-        public float elapsedFixedDeltaTime;
-
-        private EntityManager m_entityManager;
-        public ReferenceWrapper<EntityManager> entityManagerWrapper;
-        public ref EntityManager EntityManager => ref m_entityManager;
-
         public readonly List<SystemBase> rootSystems = new();
         public readonly Dictionary<Type, SystemBase> systemByType = new();
+        public float deltaTime;
+        public float elapsedDeltaTime;
+        public float elapsedFixedDeltaTime;
+        public ReferenceWrapper<EntityManager> entityManagerWrapper;
+
+        public float fixedDeltaTime;
+
+        private EntityManager m_entityManager;
 
         public World()
         {
@@ -35,6 +33,8 @@ namespace UnsafeEcs.Core.Worlds
             m_entityManager.Initialize();
             entityManagerWrapper = new ReferenceWrapper<EntityManager>(ref m_entityManager);
         }
+
+        public ref EntityManager EntityManager => ref m_entityManager;
 
         public void Dispose()
         {

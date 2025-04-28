@@ -5,7 +5,7 @@ using UnsafeEcs.Core.Worlds;
 namespace UnsafeEcs.Tests.Editor.SystemDependenciesTests
 {
     [TestFixture]
-    public class SystemDependencyTests: UnsafeEcsBaseTest
+    public class SystemDependencyTests : UnsafeEcsBaseTest
     {
         [Test]
         public void RootSystems_AreInCorrectWorlds()

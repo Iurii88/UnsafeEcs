@@ -22,17 +22,17 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
             var results = query.Fetch();
             Assert.AreEqual(0, results.Length);
         }
-        
+
         [Test]
         public void Fetch_ReturnsMatchingEntities()
         {
             var entity1 = CreateEntityWithComponents(typeof(ComponentA), typeof(ComponentB));
             var entity2 = CreateEntityWithComponents(typeof(ComponentA));
             _ = CreateEntityWithComponents(typeof(ComponentB)); // Should not match
-            
+
             var query = CreateTestQuery().With<ComponentA>();
             var results = query.Fetch();
-            
+
             Assert.AreEqual(2, results.Length);
             AssertContainsEntity(results, entity1);
             AssertContainsEntity(results, entity2);

@@ -53,47 +53,47 @@ namespace UnsafeEcs.Serialization
                 // Write entity manager data
                 fixed (byte* srcPtr = entityManagerData)
                     UnsafeUtility.MemCpy(ptr + position, srcPtr, entityManagerData.Length);
-                
+
                 position += entityManagerData.Length;
             }
-            
+
             return output;
         }
 
         public static World Deserialize(MemoryRegion memoryRegion, World world)
         {
             var ptr = memoryRegion.ptr;
-            int position = 0;
+            var position = 0;
 
             // Read magic
-            int magic = *(int*)(ptr + position);
+            var magic = *(int*)(ptr + position);
             position += 4;
 
             if (magic != 0x574C44) // "WLD" in hex
                 throw new InvalidDataException("Invalid world data format");
 
             // Read version
-            int version = *(int*)(ptr + position);
+            var version = *(int*)(ptr + position);
             position += 4;
 
             if (version != 1)
                 throw new InvalidDataException($"Unsupported world version: {version}");
 
             // Read world timing fields
-            float deltaTime = *(float*)(ptr + position);
+            var deltaTime = *(float*)(ptr + position);
             position += 4;
 
-            float elapsedDeltaTime = *(float*)(ptr + position);
+            var elapsedDeltaTime = *(float*)(ptr + position);
             position += 4;
 
-            float fixedDeltaTime = *(float*)(ptr + position);
+            var fixedDeltaTime = *(float*)(ptr + position);
             position += 4;
 
-            float elapsedFixedDeltaTime = *(float*)(ptr + position);
+            var elapsedFixedDeltaTime = *(float*)(ptr + position);
             position += 4;
 
             // Read entity manager data size
-            int entityManagerSize = *(int*)(ptr + position);
+            var entityManagerSize = *(int*)(ptr + position);
             position += 4;
 
             // Restore timing fields

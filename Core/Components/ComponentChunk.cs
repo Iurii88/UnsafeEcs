@@ -19,7 +19,7 @@ namespace UnsafeEcs.Core.Components
         [NativeDisableUnsafePtrRestriction] public int* componentIndices; // Maps entity ID -> component index (sparse set)
         public int maxEntityId; // Tracks the highest entity ID to resize componentIndices array
         public uint version;
-        
+
         public int typeIndex;
         [NativeDisableUnsafePtrRestriction] public readonly EntityManager* managerPtr;
 

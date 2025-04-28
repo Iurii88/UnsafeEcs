@@ -9,14 +9,25 @@ namespace UnsafeEcs.Core.Systems
 {
     public abstract class SystemBase
     {
-        public World world;
         public JobHandle dependency;
+        public World world;
         public ReferenceWrapper<EntityManager> entityManagerWrapper => world.entityManagerWrapper;
-        
-        public virtual void OnAwake() {}
-        public virtual void OnUpdate() {}
-        public virtual void OnFixedUpdate() {}
-        public virtual void OnDestroy() {}
+
+        public virtual void OnAwake()
+        {
+        }
+
+        public virtual void OnUpdate()
+        {
+        }
+
+        public virtual void OnFixedUpdate()
+        {
+        }
+
+        public virtual void OnDestroy()
+        {
+        }
 
         protected EntityQuery CreateQuery()
         {
@@ -27,7 +38,7 @@ namespace UnsafeEcs.Core.Systems
         {
             return world.EntityManager.GetComponentArray<T>();
         }
-        
+
         protected BufferArray<T> GetBufferArray<T>() where T : unmanaged, IBufferElement
         {
             return world.EntityManager.GetBufferArray<T>();

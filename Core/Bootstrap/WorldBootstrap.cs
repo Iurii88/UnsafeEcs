@@ -25,8 +25,6 @@ namespace UnsafeEcs.Core.Bootstrap
         // Special index indicating a system should be added to all worlds
         public const int AllWorldsIndex = int.MaxValue;
 
-        private static LogLevel m_currentLogLevel;
-
         // Color constants for Unity console
         private const string ColorSystem = "#4EC9B0"; // Light blue
         private const string ColorGroup = "#569CD6"; // Blue
@@ -35,12 +33,7 @@ namespace UnsafeEcs.Core.Bootstrap
         private const string ColorError = "#F44747"; // Red
         private const string ColorHighlight = "#DCDCAA"; // Yellow
 
-        private class BootstrapCache
-        {
-            public readonly Dictionary<Type, List<int>> systemWorldIndices = new();
-            public readonly Dictionary<Type, List<Type>> groupChildren = new();
-            public List<Type> allSystemTypes = new(128);
-        }
+        private static LogLevel m_currentLogLevel;
 
         private static readonly Dictionary<Type, List<int>> ResolvedWorldIndices = new();
         private static readonly Dictionary<int, World> CreatedWorlds = new();
@@ -71,7 +64,7 @@ namespace UnsafeEcs.Core.Bootstrap
             // Analyze systems if cache is empty
             if (m_cache == null)
             {
-                Log($"<b>=== SYSTEM ANALYSIS PHASE ===</b>", LogLevel.Minimal);
+                Log("<b>=== SYSTEM ANALYSIS PHASE ===</b>", LogLevel.Minimal);
                 m_cache = AnalyzeSystems(assemblies);
             }
 
@@ -110,7 +103,7 @@ namespace UnsafeEcs.Core.Bootstrap
             }
 
             // Create and organize systems
-            Log($"<b>=== SYSTEM INITIALIZATION PHASE ===</b>", LogLevel.Minimal);
+            Log("<b>=== SYSTEM INITIALIZATION PHASE ===</b>", LogLevel.Minimal);
             CreateSystemHierarchy(m_cache.allSystemTypes, m_cache.groupChildren);
 
             Log($"Total initialization time: <color={ColorHighlight}>{m_stopwatch.ElapsedMilliseconds}ms</color>", LogLevel.Minimal);
@@ -499,7 +492,7 @@ namespace UnsafeEcs.Core.Bootstrap
             if (m_currentLogLevel >= LogLevel.Diagnostic)
             {
                 Log("<b>Final execution order:</b>", LogLevel.Diagnostic);
-                for (int i = 0; i < result.Count; i++)
+                for (var i = 0; i < result.Count; i++)
                 {
                     Log($"  {i + 1}. <color={ColorSystem}>{result[i].GetType().Name}</color>", LogLevel.Diagnostic);
                 }
@@ -523,10 +516,10 @@ namespace UnsafeEcs.Core.Bootstrap
 
                 // Find the starting point of cycle in the path
                 var pathArray = currentPath.ToArray();
-                int startIndex = Array.LastIndexOf(pathArray, system);
+                var startIndex = Array.LastIndexOf(pathArray, system);
 
                 // Add systems from the cycle
-                for (int i = startIndex; i >= 0; i--)
+                for (var i = startIndex; i >= 0; i--)
                 {
                     cycleList.Add(pathArray[i]);
                 }
@@ -601,6 +594,13 @@ namespace UnsafeEcs.Core.Bootstrap
             }
 
             return graph;
+        }
+
+        private class BootstrapCache
+        {
+            public readonly Dictionary<Type, List<Type>> groupChildren = new();
+            public readonly Dictionary<Type, List<int>> systemWorldIndices = new();
+            public List<Type> allSystemTypes = new(128);
         }
 
         #region Logging Utilities

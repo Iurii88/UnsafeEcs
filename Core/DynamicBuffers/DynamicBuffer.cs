@@ -7,7 +7,7 @@ using UnsafeEcs.Core.Components;
 
 namespace UnsafeEcs.Core.DynamicBuffers
 {
-public readonly unsafe struct DynamicBuffer<T> where T : unmanaged, IBufferElement
+    public readonly unsafe struct DynamicBuffer<T> where T : unmanaged, IBufferElement
     {
         private readonly BufferHeader* m_buffer;
 
@@ -89,9 +89,9 @@ public readonly unsafe struct DynamicBuffer<T> where T : unmanaged, IBufferEleme
             if (newLength > m_buffer->capacity)
                 Reserve(math.max(newLength, m_buffer->capacity * 2));
 
-            UnsafeUtility.MemCpy(m_buffer->pointer + m_buffer->length * UnsafeUtility.SizeOf<T>(), 
+            UnsafeUtility.MemCpy(m_buffer->pointer + m_buffer->length * UnsafeUtility.SizeOf<T>(),
                 elements, UnsafeUtility.SizeOf<T>() * count);
-            
+
             m_buffer->length = newLength;
         }
 
@@ -105,10 +105,10 @@ public readonly unsafe struct DynamicBuffer<T> where T : unmanaged, IBufferEleme
             var dst = m_buffer->pointer + index * elementSize;
             var src = m_buffer->pointer + (index + 1) * elementSize;
             var bytesToMove = (m_buffer->length - index - 1) * elementSize;
-            
+
             if (bytesToMove > 0)
                 UnsafeUtility.MemMove(dst, src, bytesToMove);
-            
+
             m_buffer->length--;
         }
 
@@ -143,7 +143,7 @@ public readonly unsafe struct DynamicBuffer<T> where T : unmanaged, IBufferEleme
                 throw new ArgumentNullException(nameof(array));
 
             ResizeUninitialized(array.Length);
-            
+
             fixed (T* source = array)
             {
                 UnsafeUtility.MemCpy(m_buffer->pointer, source, UnsafeUtility.SizeOf<T>() * array.Length);

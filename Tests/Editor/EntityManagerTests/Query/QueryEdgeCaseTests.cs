@@ -14,11 +14,11 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
         public void ForEach_WithNoMatchingEntities_DoesNotExecute()
         {
             CreateEntityWithComponents(typeof(ComponentB)); // Doesn't match
-            
+
             var count = 0;
             var query = CreateTestQuery().With<ComponentA>();
             query.ForEach((ref Entity _) => count++);
-            
+
             Assert.AreEqual(0, count);
         }
 
@@ -27,18 +27,19 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
         {
             var entity1 = CreateEntityWithComponents(typeof(ComponentA));
             _ = CreateEntityWithComponents(typeof(ComponentA));
-            
-            int count = 0;
+
+            var count = 0;
             var query = CreateTestQuery().With<ComponentA>();
-            query.ForEach((ref Entity e) => {
+            query.ForEach((ref Entity e) =>
+            {
                 if (e == entity1)
                     entityManager.DestroyEntity(e);
                 count++;
             });
-            
+
             // Should process both entities (destruction happens after check)
             Assert.AreEqual(2, count);
-            
+
             // Verify entity1 was actually destroyed
             Assert.IsFalse(entityManager.IsEntityAlive(entity1));
         }
@@ -47,22 +48,18 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Query
         public void ForEach_WithMissingComponent_ThrowsException()
         {
             _ = CreateEntityWithComponents(typeof(ComponentA)); // Missing ComponentB
-            
+
             var query = CreateTestQuery().With<ComponentA>();
-            Assert.Throws<InvalidOperationException>(() => {
-                query.ForEach((ref Entity _, ref ComponentA _, ref ComponentB _) => { });
-            });
+            Assert.Throws<InvalidOperationException>(() => { query.ForEach((ref Entity _, ref ComponentA _, ref ComponentB _) => { }); });
         }
 
         [Test]
         public void ForEach_WithMissingBuffer_ThrowsException()
         {
-           _ = CreateEntityWithComponents(typeof(ComponentA)); // Missing buffer
-            
+            _ = CreateEntityWithComponents(typeof(ComponentA)); // Missing buffer
+
             var query = CreateTestQuery().With<ComponentA>();
-            Assert.Throws<InvalidOperationException>(() => {
-                query.ForEach((ref Entity _, DynamicBuffer<BufferElement> _) => { });
-            });
+            Assert.Throws<InvalidOperationException>(() => { query.ForEach((ref Entity _, DynamicBuffer<BufferElement> _) => { }); });
         }
     }
 }

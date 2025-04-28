@@ -33,9 +33,16 @@ namespace UnsafeEcs.Core.Entities
         {
             return obj is Entity other && Equals(other);
         }
-        
-        public bool Equals(Entity other) => id == other.id && version == other.version;
-        public override int GetHashCode() => HashCode.Combine(id, version);
+
+        public bool Equals(Entity other)
+        {
+            return id == other.id && version == other.version;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(id, version);
+        }
 
         // Equality operator
         public static bool operator ==(Entity left, Entity right)
@@ -48,7 +55,7 @@ namespace UnsafeEcs.Core.Entities
         {
             return !(left == right);
         }
-        
+
         public override string ToString()
         {
             return $"id:{id} v:{version}";
