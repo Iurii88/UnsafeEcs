@@ -1,4 +1,8 @@
-﻿using Unity.Burst;
+﻿#if !COMPONENT_BITS_32 && !COMPONENT_BITS_64 && !COMPONENT_BITS_128 && !COMPONENT_BITS_256
+#define COMPONENT_BITS_32 // Default size is 32 bits
+#endif
+
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
@@ -51,10 +55,12 @@ namespace UnsafeEcs.Serialization
 
             public void Execute()
             {
-                // Header: 40 bytes total, broken down as:
+                // Header: base size + component bits config type
                 var totalSize = 0;
 
+                // Header fields
                 totalSize += 4; // Magic number (int)
+                totalSize += 1; // Component bits configuration type (byte)
                 totalSize += 8; // Type hash (long)
                 totalSize += 4; // nextId (int)
                 totalSize += 4; // freeEntities count (int)
@@ -66,8 +72,16 @@ namespace UnsafeEcs.Serialization
                 // Free entities data
                 totalSize += manager->freeEntities.Length * 8; // id is int (4 bytes), version is int (4 bytes)
 
-                // For each archetype: entity (8 bytes) + 4 longs for ComponentBits (32 bytes)
-                totalSize += manager->entityArchetypes.Length * (4 + 32);
+                // For each archetype: ComponentBits size varies based on configuration
+#if COMPONENT_BITS_32
+                    totalSize += manager->entityArchetypes.Length * (4); // 32 bits = 4 bytes
+#elif COMPONENT_BITS_64
+                    totalSize += manager->entityArchetypes.Length * (8); // 64 bits = 8 bytes
+#elif COMPONENT_BITS_128
+                    totalSize += manager->entityArchetypes.Length * (16); // 128 bits = 16 bytes
+#elif COMPONENT_BITS_256
+                    totalSize += manager->entityArchetypes.Length * (32); // 256 bits = 32 bytes
+#endif
 
                 // Entity data
                 totalSize += manager->entities.Length * 8; // Entity ID + version
@@ -152,6 +166,20 @@ namespace UnsafeEcs.Serialization
                 *(int*)(ptr + position) = SerializationMagic;
                 position += 4;
 
+                // Component bits configuration type (1 byte)
+                byte configType;
+#if COMPONENT_BITS_32
+                    configType = 32;
+#elif COMPONENT_BITS_64
+                    configType = 64;
+#elif COMPONENT_BITS_128
+                    configType = 128;
+#elif COMPONENT_BITS_256
+                    configType = 255; // Using 255 instead of 256 to fit in a byte
+#endif
+                *(ptr + position) = configType;
+                position += 1;
+
                 // Type hash (8 bytes)
                 *(long*)(ptr + position) = ComputeTypeInfoHash();
                 position += 8;
@@ -195,15 +223,28 @@ namespace UnsafeEcs.Serialization
                 {
                     ref var entityArchetype = ref manager->entityArchetypes.Ptr[i];
 
-                    // Write ComponentBits (4 ulongs = 32 bytes)
-                    *(ulong*)(ptr + position) = entityArchetype.componentBits.part0;
-                    position += 8;
-                    *(ulong*)(ptr + position) = entityArchetype.componentBits.part1;
-                    position += 8;
-                    *(ulong*)(ptr + position) = entityArchetype.componentBits.part2;
-                    position += 8;
-                    *(ulong*)(ptr + position) = entityArchetype.componentBits.part3;
-                    position += 8;
+                    // Write ComponentBits based on configuration
+#if COMPONENT_BITS_32
+                        *(uint*)(ptr + position) = entityArchetype.componentBits.part0;
+                        position += 4;
+#elif COMPONENT_BITS_64
+                        *(ulong*)(ptr + position) = entityArchetype.componentBits.part0;
+                        position += 8;
+#elif COMPONENT_BITS_128
+                        *(ulong*)(ptr + position) = entityArchetype.componentBits.part0;
+                        position += 8;
+                        *(ulong*)(ptr + position) = entityArchetype.componentBits.part1;
+                        position += 8;
+#elif COMPONENT_BITS_256
+                        *(ulong*)(ptr + position) = entityArchetype.componentBits.part0;
+                        position += 8;
+                        *(ulong*)(ptr + position) = entityArchetype.componentBits.part1;
+                        position += 8;
+                        *(ulong*)(ptr + position) = entityArchetype.componentBits.part2;
+                        position += 8;
+                        *(ulong*)(ptr + position) = entityArchetype.componentBits.part3;
+                        position += 8;
+#endif
                 }
 
                 // Write entities

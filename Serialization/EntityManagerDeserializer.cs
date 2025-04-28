@@ -1,4 +1,8 @@
-﻿using System;
+﻿#if !COMPONENT_BITS_32 && !COMPONENT_BITS_64 && !COMPONENT_BITS_128 && !COMPONENT_BITS_256
+#define COMPONENT_BITS_32 // Default size is 32 bits
+#endif
+
+using System;
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -37,11 +41,30 @@ namespace UnsafeEcs.Serialization
             {
                 var position = 0;
 
-                // Read header - one field at a time
+                // Read header
                 // Magic number (4 bytes)
                 var magic = *(int*)(ptr + position);
                 if (magic != SerializationMagic) throw new ArgumentException("Invalid data format");
                 position += 4;
+
+                // Read component bits configuration (1 byte)
+                var configType = *(ptr + position);
+                position += 1;
+
+                // Verify configType matches the current configuration
+#if COMPONENT_BITS_32
+                if (configType != 32)
+                    throw new InvalidOperationException($"Component bits configuration mismatch. Data uses {configType} bits, but runtime uses 32 bits.");
+#elif COMPONENT_BITS_64
+                if (configType != 64)
+                    throw new InvalidOperationException($"Component bits configuration mismatch. Data uses {configType} bits, but runtime uses 64 bits.");
+#elif COMPONENT_BITS_128
+                if (configType != 128)
+                    throw new InvalidOperationException($"Component bits configuration mismatch. Data uses {configType} bits, but runtime uses 128 bits.");
+#elif COMPONENT_BITS_256
+                if (configType != 255) // We use 255 for 256 bits
+                    throw new InvalidOperationException($"Component bits configuration mismatch. Data uses {configType} bits, but runtime uses 256 bits.");
+#endif
 
                 // Type hash (8 bytes)
                 var typeInfoHash = *(long*)(ptr + position);
@@ -99,18 +122,31 @@ namespace UnsafeEcs.Serialization
                 manager->entityArchetypes.Clear();
                 for (var i = 0; i < entityArchetypesCount; i++)
                 {
-                    // Read ComponentBits
+                    // Read ComponentBits based on configuration
                     EntityArchetype archetype;
                     archetype.componentBits = new ComponentBits();
 
-                    archetype.componentBits.part0 = *(ulong*)(ptr + position);
-                    position += 8;
-                    archetype.componentBits.part1 = *(ulong*)(ptr + position);
-                    position += 8;
-                    archetype.componentBits.part2 = *(ulong*)(ptr + position);
-                    position += 8;
-                    archetype.componentBits.part3 = *(ulong*)(ptr + position);
-                    position += 8;
+#if COMPONENT_BITS_32
+                        archetype.componentBits.part0 = *(uint*)(ptr + position);
+                        position += 4;
+#elif COMPONENT_BITS_64
+                        archetype.componentBits.part0 = *(ulong*)(ptr + position);
+                        position += 8;
+#elif COMPONENT_BITS_128
+                        archetype.componentBits.part0 = *(ulong*)(ptr + position);
+                        position += 8;
+                        archetype.componentBits.part1 = *(ulong*)(ptr + position);
+                        position += 8;
+#elif COMPONENT_BITS_256
+                        archetype.componentBits.part0 = *(ulong*)(ptr + position);
+                        position += 8;
+                        archetype.componentBits.part1 = *(ulong*)(ptr + position);
+                        position += 8;
+                        archetype.componentBits.part2 = *(ulong*)(ptr + position);
+                        position += 8;
+                        archetype.componentBits.part3 = *(ulong*)(ptr + position);
+                        position += 8;
+#endif
 
                     manager->entityArchetypes.Add(archetype);
                 }
