@@ -195,6 +195,56 @@ UnsafeEcs features a high-performance query system that:
 - Updates only when component changes are detected
 - Provides efficient filtering with `With<>`, `Without<>` and `WithAny<>` operators
 
+### Custom Query Filtering
+
+In addition to the standard component-based filtering, UnsafeEcs provides a custom filtering mechanism that allows for more precise entity selection based on component values or other criteria. This is implemented through the `IQueryFilter` interface:
+
+```csharp
+public interface IQueryFilter
+{
+    public bool Validate(Entity entity);
+}
+```
+
+#### Creating Custom Filters
+
+To create a custom filter, first define your component:
+
+```csharp
+public struct IntValueComponent : IComponent
+{
+    public int value;
+}
+```
+
+Then implement the `IQueryFilter` interface for your specific filtering needs:
+
+```csharp
+public struct IntValueFilter : IQueryFilter
+{
+    public ComponentArray<IntValueComponent> componentArray;
+    public int filterValue; 
+    
+    public bool Validate(Entity entity)
+    {
+        ref var component = ref componentArray.Get(entity);
+        return component.value == filterValue;
+    }
+}
+```
+
+#### Using Custom Filters in Queries
+
+Once defined, the custom filter can be applied during query execution:
+
+```csharp
+var filteredEntities = CreateQuery().With<IntValueComponent>().Fetch(new IntValueFilter
+{
+    componentArray = GetComponentArray<IntValueComponent>(),
+    filterValue = 1
+});
+```
+
 ## Examples
 
 ### Creating Entities One by One
