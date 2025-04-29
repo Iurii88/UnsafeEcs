@@ -615,3 +615,175 @@ var sourceWorld = WorldManager.GetWorld(0);
 var destinationWorld = WorldManager.GetWorld(1);
 var migratedEntity = EntityMigration.MigrateEntity(sourceWorld, destinationWorld, entity);
 ```
+
+# Performance Benchmark Analysis
+
+## Overview
+
+This benchmark analysis evaluates the library's performance across different operation types and execution modes using 500,000 entities.
+
+## Test Environment
+
+- **Hardware**: 12th Gen Intel® Core™ i5-12600KF @ 3.70 GHz
+- **Entity Count**: 500,000
+- **Components**: Four test components (TestComponent0-3)
+- **Memory Usage**: ~57 MB allocated
+
+## Test Scenarios
+
+The benchmark evaluates three key scenarios in both single-threaded (Update) and multi-threaded (Jobs) execution modes:
+
+1. **Component Access & Modification**: Incrementing values in all four components
+2. **Single Component Structural Changes**: Removing and re-adding a single component type
+3. **Multiple Component Structural Changes**: Removing and re-adding three component types
+
+## Performance Results
+
+### Test 1: Component Access & Modification
+
+| Execution Mode | FPS    | Frame Time | Performance Comparison |
+|---------------|--------|------------|------------------------|
+| Update        | 325 fps | 3.0 ms     | Baseline               |
+| Jobs          | 1097 fps | 0.9 ms     | 3.4× faster            |
+
+**Code Implementation:**
+
+```csharp
+// Update mode (single-threaded)
+private unsafe void ExecuteTest1Update()
+{
+    var entities = m_filter3.Fetch();
+    for (var i = 0; i < entities.m_length; i++)
+    {
+        ref var entity = ref entities.Ptr[i];
+        m_stash0.Get(entity).Test++;
+        m_stash1.Get(entity).Test++;
+        m_stash2.Get(entity).Test++;
+        m_stash3.Get(entity).Test++;
+    }
+}
+
+// Jobs mode (multi-threaded)
+[BurstCompile]
+private struct Test1Job : IJobParallelFor
+{
+    [ReadOnly] public UnsafeList<Entity> entities;
+    [ReadOnly] public ComponentArray<TestComponent0> stash0;
+    [ReadOnly] public ComponentArray<TestComponent1> stash1;
+    [ReadOnly] public ComponentArray<TestComponent2> stash2;
+    [ReadOnly] public ComponentArray<TestComponent3> stash3;
+
+    public unsafe void Execute(int index)
+    {
+        ref var entity = ref entities.Ptr[index];
+        stash0.Get(entity).Test++;
+        stash1.Get(entity).Test++;
+        stash2.Get(entity).Test++;
+        stash3.Get(entity).Test++;
+    }
+}
+```
+
+### Test 2: Single Component Structural Changes
+
+| Execution Mode | FPS    | Frame Time | Performance Comparison |
+|---------------|--------|------------|------------------------|
+| Update        | 152 fps | 6.5 ms     | Baseline               |
+| Jobs          | 176 fps | 5.6 ms     | 1.16× faster           |
+
+**Code Implementation:**
+
+```csharp
+// Update mode (single-threaded)
+private unsafe void ExecuteTest2Update()
+{
+    var entities = m_filter3.Fetch();
+    for (var i = 0; i < entities.m_length; i++)
+        m_stash3.Remove(entities.Ptr[i]);
+
+    entities = m_filter0.Fetch();
+    for (var i = 0; i < entities.m_length; i++)
+        m_stash3.Add(entities.Ptr[i]);
+}
+
+// Jobs mode (single job)
+[BurstCompile]
+private struct Test2Job : IJob
+{
+    [ReadOnly] public EntityQuery filter3;
+    [ReadOnly] public EntityQuery filter0;
+    [ReadOnly] public ComponentArray<TestComponent3> stash3;
+
+    public unsafe void Execute()
+    {
+        var entities = filter3.FetchWithoutJob();
+        for (var i = 0; i < entities.m_length; i++)
+            stash3.Remove(entities.Ptr[i]);
+
+        entities = filter0.FetchWithoutJob();
+        for (var i = 0; i < entities.m_length; i++)
+            stash3.Add(entities.Ptr[i]);
+    }
+}
+```
+
+### Test 3: Multiple Component Structural Changes
+
+| Execution Mode | FPS    | Frame Time | Performance Comparison |
+|---------------|--------|------------|------------------------|
+| Update        | 76 fps  | 13.1 ms    | Baseline               |
+| Jobs          | 97 fps  | 10.3 ms    | 1.28× faster           |
+
+**Code Implementation:**
+
+```csharp
+// Update mode (single-threaded)
+private unsafe void ExecuteTest3Update()
+{
+    var entities = m_filter3.Fetch();
+    for (var i = 0; i < entities.m_length; i++)
+    {
+        m_stash1.Remove(entities.Ptr[i]);
+        m_stash2.Remove(entities.Ptr[i]);
+        m_stash3.Remove(entities.Ptr[i]);
+    }
+
+    entities = m_filter0.Fetch();
+    for (var i = 0; i < entities.m_length; i++)
+    {
+        m_stash1.Add(entities.Ptr[i]);
+        m_stash2.Add(entities.Ptr[i]);
+        m_stash3.Add(entities.Ptr[i]);
+    }
+}
+
+// Jobs mode (single job)
+[BurstCompile]
+private struct Test3Job : IJob
+{
+    [ReadOnly] public EntityQuery filter3;
+    [ReadOnly] public EntityQuery filter0;
+    [ReadOnly] public ComponentArray<TestComponent1> stash1;
+    [ReadOnly] public ComponentArray<TestComponent2> stash2;
+    [ReadOnly] public ComponentArray<TestComponent3> stash3;
+
+    public unsafe void Execute()
+    {
+        var entities = filter3.FetchWithoutJob();
+        for (var i = 0; i < entities.m_length; i++)
+        {
+            stash1.Remove(entities.Ptr[i]);
+            stash2.Remove(entities.Ptr[i]);
+            stash3.Remove(entities.Ptr[i]);
+        }
+
+        entities = filter0.FetchWithoutJob();
+        for (var i = 0; i < entities.m_length; i++)
+        {
+            stash1.Add(entities.Ptr[i]);
+            stash2.Add(entities.Ptr[i]);
+            stash3.Add(entities.Ptr[i]);
+        }
+    }
+}
+```
