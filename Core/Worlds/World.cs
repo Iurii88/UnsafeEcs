@@ -12,11 +12,10 @@ namespace UnsafeEcs.Core.Worlds
         public readonly List<SystemBase> rootSystems = new();
         public readonly Dictionary<Type, SystemBase> systemByType = new();
         public float deltaTime;
+        public float fixedDeltaTime;
         public float elapsedDeltaTime;
         public float elapsedFixedDeltaTime;
         public ReferenceWrapper<EntityManager> entityManagerWrapper;
-
-        public float fixedDeltaTime;
 
         private EntityManager m_entityManager;
 
@@ -49,11 +48,32 @@ namespace UnsafeEcs.Core.Worlds
             deltaTime = dt;
             elapsedDeltaTime += dt;
             var dependency = default(JobHandle);
+
             foreach (var system in rootSystems)
             {
-                system.dependency = dependency;
-                system.OnUpdate();
-                dependency = system.dependency;
+                if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
+                {
+                    system.dependency = dependency;
+                    system.OnUpdate();
+                    dependency = system.dependency;
+                }
+            }
+
+            dependency.Complete();
+        }
+
+        public void LateUpdate(float dt)
+        {
+            var dependency = default(JobHandle);
+
+            foreach (var system in rootSystems)
+            {
+                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
+                {
+                    system.dependency = dependency;
+                    system.OnLateUpdate();
+                    dependency = system.dependency;
+                }
             }
 
             dependency.Complete();
@@ -64,11 +84,15 @@ namespace UnsafeEcs.Core.Worlds
             fixedDeltaTime = dt;
             elapsedFixedDeltaTime += dt;
             var dependency = default(JobHandle);
+
             foreach (var system in rootSystems)
             {
-                system.dependency = dependency;
-                system.OnFixedUpdate();
-                dependency = system.dependency;
+                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
+                {
+                    system.dependency = dependency;
+                    system.OnFixedUpdate();
+                    dependency = system.dependency;
+                }
             }
 
             dependency.Complete();

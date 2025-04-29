@@ -67,6 +67,12 @@ namespace UnsafeEcs.Core.Worlds
             foreach (var world in Worlds)
                 world.Update(deltaTime);
         }
+        
+        public static void LateUpdate(float deltaTime)
+        {
+            foreach (var world in Worlds)
+                world.LateUpdate(deltaTime);
+        }
 
         public static void FixedUpdate(float deltaTime)
         {
@@ -88,7 +94,12 @@ namespace UnsafeEcs.Core.Worlds
         {
             WorldManager.Update(Time.deltaTime);
         }
-
+        
+        private void LateUpdate()
+        {
+            WorldManager.LateUpdate(Time.deltaTime);
+        }
+        
         private void FixedUpdate()
         {
             WorldManager.FixedUpdate(Time.fixedDeltaTime);

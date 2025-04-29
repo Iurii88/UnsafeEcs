@@ -7,17 +7,33 @@ using UnsafeEcs.Core.Worlds;
 
 namespace UnsafeEcs.Core.Systems
 {
+    [System.Flags]
+    public enum SystemUpdateMask
+    {
+        None = 0,
+        Update = 1 << 0,
+        LateUpdate = 1 << 1,
+        FixedUpdate = 1 << 2,
+        All = Update | LateUpdate | FixedUpdate
+    }
+
     public abstract class SystemBase
     {
         public JobHandle dependency;
         public World world;
         public ReferenceWrapper<EntityManager> entityManagerWrapper => world.entityManagerWrapper;
 
+        public SystemUpdateMask UpdateMask { get; set; } = SystemUpdateMask.Update;
+
         public virtual void OnAwake()
         {
         }
 
         public virtual void OnUpdate()
+        {
+        }
+
+        public virtual void OnLateUpdate()
         {
         }
 
