@@ -5,10 +5,26 @@
 ![Unity](https://img.shields.io/badge/unity-compatible-brightgreen.svg)
 ![Performance](https://img.shields.io/badge/performance-high-success.svg)
 
-> **Benchmark System**: 12th Gen Intel® Core™ i5-12600KF @ 3.70 GHz
+> **Benchmark System**: 12th Gen Intel® Core™ i5-12600KF @ 3.70 GHz  
+> [Jump to Performance Benchmarks](#performance-benchmark-analysis)
 
-⚠️ PREVIEW VERSION NOTICE ⚠️
+⚠️ PREVIEW VERSION NOTICE ⚠️  
 This is a pre-release preview version of UnsafeEcs. Many features and APIs are subject to change. This documentation is provided for evaluation purposes only and is not representative of the final stable release.
+
+## Table of Contents
+- [Introduction](#introduction)
+- [Features](#features)
+- [Cross-Platform Support](#full-cross-platform-support)
+- [Mobile Performance](#mobile-performance-considerations)
+- [Installation](#installation)
+- [Thread Safety](#critical-note-thread-safety)
+- [Getting Started](#getting-started)
+- [World Management](#world-management)
+- [Query System](#query-system)
+- [Examples](#examples)
+- [Buffers](#buffers)
+- [World Serialization & Deserialization](#world-serialization--deserialization)
+- [Performance Benchmark Analysis](#performance-benchmark-analysis)
 
 ## Introduction
 
@@ -451,11 +467,11 @@ public class ForEachMovementSystem : SystemBase
 }
 ```
 
-# Buffers
+## Buffers
 
 Buffers provide a dynamic array-like structure for storing collections of data on entities. Similar to components, buffers can be attached to entities but allow for variable-sized data collections rather than fixed structures.
 
-## Buffer Definition
+### Buffer Definition
 
 To use buffers, you need to define a buffer element type:
 
@@ -560,7 +576,7 @@ private struct ProcessBuffersJob : IJobParallelFor
 }
 ```
 
-# World Serialization & Deserialization
+## World Serialization & Deserialization
 
 UnsafeEcs provides a powerful, high-performance serialization system that enables:
 
@@ -569,7 +585,7 @@ UnsafeEcs provides a powerful, high-performance serialization system that enable
 - ⏱️ **Ultra-fast save/load operations**
 - 🔄 **Seamless migration between runtime and saved states**
 
-## Simple API, Powerful Results
+### Simple API, Powerful Results
 
 ```csharp
 // SAVE: Serialize all worlds in a single line
@@ -579,7 +595,7 @@ byte[] worldData = EcsSerializer.Serialize();
 EcsSerializer.Deserialize(worldData);
 ```
 
-## Performance Benchmarks
+### Performance Benchmarks
 
 The serialization system achieves exceptional performance even with massive entity counts:
 
@@ -616,20 +632,20 @@ var destinationWorld = WorldManager.GetWorld(1);
 var migratedEntity = EntityMigration.MigrateEntity(sourceWorld, destinationWorld, entity);
 ```
 
-# Performance Benchmark Analysis
+## Performance Benchmark Analysis
 
-## Overview
+### Overview
 
 This benchmark analysis evaluates the library's performance across different operation types and execution modes using 500,000 entities.
 
-## Test Environment
+### Test Environment
 
 - **Hardware**: 12th Gen Intel® Core™ i5-12600KF @ 3.70 GHz
 - **Entity Count**: 500,000
 - **Components**: Four test components (TestComponent0-3)
 - **Memory Usage**: ~57 MB allocated
 
-## Test Scenarios
+### Test Scenarios
 
 The benchmark evaluates three key scenarios in both single-threaded (Update) and multi-threaded (Jobs) execution modes:
 
@@ -637,9 +653,9 @@ The benchmark evaluates three key scenarios in both single-threaded (Update) and
 2. **Single Component Structural Changes**: Removing and re-adding a single component type
 3. **Multiple Component Structural Changes**: Removing and re-adding three component types
 
-## Performance Results
+### Performance Results
 
-### Test 1: Component Access & Modification
+#### Test 1: Component Access & Modification
 
 | Execution Mode | FPS    | Frame Time | Performance Comparison |
 |---------------|--------|------------|------------------------|
@@ -684,7 +700,7 @@ private struct Test1Job : IJobParallelFor
 }
 ```
 
-### Test 2: Single Component Structural Changes
+#### Test 2: Single Component Structural Changes
 
 | Execution Mode | FPS    | Frame Time | Performance Comparison |
 |---------------|--------|------------|------------------------|
@@ -727,7 +743,7 @@ private struct Test2Job : IJob
 }
 ```
 
-### Test 3: Multiple Component Structural Changes
+#### Test 3: Multiple Component Structural Changes
 
 | Execution Mode | FPS    | Frame Time | Performance Comparison |
 |---------------|--------|------------|------------------------|
