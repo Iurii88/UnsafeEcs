@@ -45,9 +45,28 @@ namespace UnsafeEcs.Core.Systems
             var groupDependency = default(JobHandle);
             foreach (var system in systems)
             {
-                system.dependency = groupDependency;
-                system.OnUpdate();
-                groupDependency = system.dependency;
+                if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
+                {
+                    system.dependency = groupDependency;
+                    system.OnUpdate();
+                    groupDependency = system.dependency;
+                }
+            }
+
+            groupDependency.Complete();
+        }
+
+        public override void OnLateUpdate()
+        {
+            var groupDependency = default(JobHandle);
+            foreach (var system in systems)
+            {
+                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
+                {
+                    system.dependency = groupDependency;
+                    system.OnLateUpdate();
+                    groupDependency = system.dependency;
+                }
             }
 
             groupDependency.Complete();
@@ -58,9 +77,12 @@ namespace UnsafeEcs.Core.Systems
             var groupDependency = default(JobHandle);
             foreach (var system in systems)
             {
-                system.dependency = groupDependency;
-                system.OnFixedUpdate();
-                groupDependency = system.dependency;
+                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
+                {
+                    system.dependency = groupDependency;
+                    system.OnFixedUpdate();
+                    groupDependency = system.dependency;
+                }
             }
 
             groupDependency.Complete();

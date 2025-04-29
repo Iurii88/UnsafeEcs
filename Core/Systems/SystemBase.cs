@@ -23,7 +23,7 @@ namespace UnsafeEcs.Core.Systems
         public World world;
         public ReferenceWrapper<EntityManager> entityManagerWrapper => world.entityManagerWrapper;
 
-        public SystemUpdateMask UpdateMask { get; set; } = SystemUpdateMask.Update;
+        public virtual SystemUpdateMask UpdateMask { get; set; } = SystemUpdateMask.Update;
 
         public virtual void OnAwake()
         {
