@@ -53,6 +53,111 @@ namespace UnsafeEcs.Core.Entities
             }
         }
 
+        public Entity CreateEntity(EntityArchetype archetype)
+        {
+            int entityId;
+            uint version;
+            Entity entity;
+
+            if (freeEntities.Length > 0)
+            {
+                var recycledEntity = freeEntities[^1];
+                entityId = recycledEntity.id;
+                version = recycledEntity.version + 1;
+                freeEntities.RemoveAt(freeEntities.Length - 1);
+
+                entity = new Entity
+                {
+                    id = entityId,
+                    version = version,
+                    managerPtr = m_managerPtr
+                };
+
+                entities.Ptr[entityId] = entity;
+                entityArchetypes.Ptr[entityId] = archetype;
+                deadEntities.Ptr[entityId] = false;
+            }
+            else
+            {
+                entityId = nextId.Value++;
+                version = 1;
+
+                entity = new Entity
+                {
+                    id = entityId,
+                    version = version,
+                    managerPtr = m_managerPtr
+                };
+
+                entities.Add(entity);
+                entityArchetypes.Add(archetype);
+                deadEntities.Add(false);
+            }
+
+            foreach (var typeIndex in archetype.componentBits)
+            {
+                if (!TypeManager.IsBufferType(typeIndex))
+                {
+                    if (typeIndex >= chunks.Length)
+                    {
+                        chunks.Resize(typeIndex + 1);
+
+                        var size = TypeManager.GetTypeSizeByIndex(typeIndex);
+                        var stackChunk = new ComponentChunk(size, InitialEntityCapacity, typeIndex, m_managerPtr);
+                        var chunk = (ComponentChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<ComponentChunk>(), UnsafeUtility.AlignOf<ComponentChunk>(), Allocator.Persistent);
+                        UnsafeUtility.CopyStructureToPtr(ref stackChunk, chunk);
+                        chunks.Ptr[typeIndex] = ChunkUnion.FromComponentChunk(chunk);
+                    }
+
+                    var existingChunk = chunks.Ptr[typeIndex].AsComponentChunk();
+                    existingChunk->EnsureEntityCapacity(entityId);
+
+                    var defaultComponentData = (byte*)UnsafeUtility.Malloc(existingChunk->componentSize, UnsafeUtility.AlignOf<byte>(), Allocator.Temp);
+                    UnsafeUtility.MemClear(defaultComponentData, existingChunk->componentSize);
+
+                    existingChunk->Add(entityId, defaultComponentData);
+
+                    UnsafeUtility.Free(defaultComponentData, Allocator.Temp);
+                }
+                else
+                {
+                    if (typeIndex >= chunks.Length)
+                    {
+                        chunks.Resize(typeIndex + 1);
+
+                        var elementSize = TypeManager.GetTypeSizeByIndex(typeIndex);
+                        var bufferChunk = (BufferChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BufferChunk>(), UnsafeUtility.AlignOf<BufferChunk>(), Allocator.Persistent);
+                        *bufferChunk = new BufferChunk(elementSize, 1, entityId + 1, typeIndex, m_managerPtr);
+                        chunks.Ptr[typeIndex] = ChunkUnion.FromBufferChunk(bufferChunk);
+                    }
+
+                    var existingBufferChunk = chunks.Ptr[typeIndex].AsBufferChunk();
+                    if (existingBufferChunk == null)
+                    {
+                        throw new InvalidOperationException($"Component type {typeIndex} is registered as a regular component but trying to add as a buffer.");
+                    }
+
+                    if (existingBufferChunk->length >= existingBufferChunk->capacity)
+                    {
+                        existingBufferChunk->Resize(math.max(existingBufferChunk->capacity * 2, existingBufferChunk->length + 1));
+                    }
+
+                    existingBufferChunk->EnsureEntityCapacity(entityId);
+
+                    var bufferIndex = existingBufferChunk->length;
+                    var initialBufferCapacity = 8;
+
+                    existingBufferChunk->InitializeBuffer(bufferIndex, initialBufferCapacity);
+                    existingBufferChunk->entityIds[bufferIndex] = entityId;
+                    existingBufferChunk->bufferIndices[entityId] = bufferIndex;
+                    existingBufferChunk->length++;
+                    existingBufferChunk->version++;
+                }
+            }
+
+            return entity;
+        }
+
         public UnsafeList<Entity> CreateEntities(EntityArchetype archetype, int count, Allocator allocator)
         {
             var result = new UnsafeList<Entity>(count, allocator);
