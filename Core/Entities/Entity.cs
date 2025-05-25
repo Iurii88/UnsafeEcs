@@ -9,6 +9,8 @@ namespace UnsafeEcs.Core.Entities
 
         public EntityManager* managerPtr;
 
+        public static readonly Entity Null = new Entity { id = -1, version = 0, managerPtr = null }; 
+        
         public ref EntityManager Manager
         {
             get

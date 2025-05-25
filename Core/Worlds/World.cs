@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using UnsafeEcs.Core.Entities;
 using UnsafeEcs.Core.Systems;
@@ -130,5 +132,24 @@ namespace UnsafeEcs.Core.Worlds
             system = (T)outSystem;
             return hasSystem;
         }
+
+        public Entity CreateEntity()
+        {
+            return EntityManager.CreateEntity();
+        }
+        public Entity CreateEntity(EntityArchetype archetype)
+        {
+            return EntityManager.CreateEntity(archetype);
+        }
+        
+        public UnsafeList<Entity> CreateEntities(EntityArchetype archetype, int count, Allocator allocator)
+        {
+            return EntityManager.CreateEntities(archetype, count, allocator);
+        }
+
+        public void DestroyEntity(Entity entity)
+        {
+            EntityManager.DestroyEntity(entity);
+        } 
     }
 }
