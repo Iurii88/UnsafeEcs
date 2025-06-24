@@ -40,6 +40,7 @@ namespace UnsafeEcs.Core.Bootstrap
         private static BootstrapCache m_cache;
         private static Stopwatch m_stopwatch;
 
+        // Original method for backwards compatibility
         public static void Initialize(Assembly[] assemblies, LogLevel logLevel = LogLevel.Normal)
         {
             m_currentLogLevel = logLevel;
@@ -47,6 +48,31 @@ namespace UnsafeEcs.Core.Bootstrap
             InitializeWorlds(assemblies);
         }
 
+        // New method for using predefined worlds
+        public static void Initialize(Assembly[] assemblies, Dictionary<int, World> worlds, LogLevel logLevel = LogLevel.Normal)
+        {
+            m_currentLogLevel = logLevel;
+            WorldManager.Initialize();
+            InitializeWorlds(assemblies, worlds);
+        }
+
+        // Alternative overload with world list (indices will be auto-assigned starting from 0)
+        public static void Initialize(Assembly[] assemblies, List<World> worlds, LogLevel logLevel = LogLevel.Normal)
+        {
+            m_currentLogLevel = logLevel;
+            WorldManager.Initialize();
+
+            // Convert list to dictionary with auto-assigned indices
+            var worldDict = new Dictionary<int, World>();
+            for (var i = 0; i < worlds.Count; i++)
+            {
+                worldDict[i] = worlds[i];
+            }
+
+            InitializeWorlds(assemblies, worldDict);
+        }
+
+        // Original test method for backwards compatibility
         public static void InitializeForTests(Assembly[] assemblies, LogLevel logLevel = LogLevel.Normal)
         {
             m_currentLogLevel = logLevel;
@@ -57,7 +83,44 @@ namespace UnsafeEcs.Core.Bootstrap
             InitializeWorlds(assemblies);
         }
 
+        // New test method for using predefined worlds
+        public static void InitializeForTests(Assembly[] assemblies, Dictionary<int, World> worlds, LogLevel logLevel = LogLevel.Normal)
+        {
+            m_currentLogLevel = logLevel;
+            m_cache = null;
+            ResolvedWorldIndices.Clear();
+            CreatedWorlds.Clear();
+            WorldManager.InitializeForTests();
+            InitializeWorlds(assemblies, worlds);
+        }
+
+        // Alternative test overload with world list
+        public static void InitializeForTests(Assembly[] assemblies, List<World> worlds, LogLevel logLevel = LogLevel.Normal)
+        {
+            m_currentLogLevel = logLevel;
+            m_cache = null;
+            ResolvedWorldIndices.Clear();
+            CreatedWorlds.Clear();
+            WorldManager.InitializeForTests();
+
+            // Convert list to dictionary with auto-assigned indices
+            var worldDict = new Dictionary<int, World>();
+            for (var i = 0; i < worlds.Count; i++)
+            {
+                worldDict[i] = worlds[i];
+            }
+
+            InitializeWorlds(assemblies, worldDict);
+        }
+
+        // Original method (create worlds automatically)
         private static void InitializeWorlds(Assembly[] assemblies)
+        {
+            InitializeWorlds(assemblies, null);
+        }
+
+        // Extended method that supports both automatic world creation and predefined worlds
+        private static void InitializeWorlds(Assembly[] assemblies, Dictionary<int, World> predefinedWorlds)
         {
             m_stopwatch = Stopwatch.StartNew();
 
@@ -75,32 +138,72 @@ namespace UnsafeEcs.Core.Bootstrap
             foreach (var kv in m_cache.systemWorldIndices)
                 ResolvedWorldIndices[kv.Key] = kv.Value;
 
-            // Create required worlds - sort indices before creation to ensure consistent ordering
+            // Handle world creation/assignment
             CreatedWorlds.Clear();
 
-            // Get unique world indices and sort them, excluding the AllWorldsIndex
-            var worldIndices = new HashSet<int>();
-
-            // Collect all specific world indices
-            foreach (var worldsList in ResolvedWorldIndices.Values)
+            if (predefinedWorlds != null && predefinedWorlds.Count > 0)
             {
-                foreach (var index in worldsList)
+                // Use predefined worlds
+                Log($"Using {predefinedWorlds.Count} predefined worlds:", LogLevel.Normal);
+                foreach (var worldPair in predefinedWorlds.OrderBy(kv => kv.Key))
                 {
-                    if (index != AllWorldsIndex)
+                    CreatedWorlds[worldPair.Key] = worldPair.Value;
+                    Log($"Using predefined world <color={ColorWorld}>#{worldPair.Key}</color>", LogLevel.Normal);
+                }
+
+                // Check if we need additional worlds that weren't provided
+                var requiredWorldIndices = new HashSet<int>();
+                foreach (var worldsList in ResolvedWorldIndices.Values)
+                {
+                    foreach (var index in worldsList)
                     {
-                        worldIndices.Add(index);
+                        if (index != AllWorldsIndex && !predefinedWorlds.ContainsKey(index))
+                        {
+                            requiredWorldIndices.Add(index);
+                        }
+                    }
+                }
+
+                // Create missing worlds if needed
+                if (requiredWorldIndices.Count > 0)
+                {
+                    Log($"Creating {requiredWorldIndices.Count} additional required worlds:", LogLevel.Normal);
+                    foreach (var worldIndex in requiredWorldIndices.OrderBy(i => i))
+                    {
+                        CreatedWorlds[worldIndex] = WorldManager.CreateWorld();
+                        Log($"Created additional world <color={ColorWorld}>#{worldIndex}</color>", LogLevel.Normal);
                     }
                 }
             }
-
-            // Create worlds in order
-            var sortedIndices = worldIndices.OrderBy(i => i).ToList();
-            Log($"Creating {sortedIndices.Count} worlds in order:", LogLevel.Normal);
-            foreach (var worldIndex in sortedIndices)
+            else
             {
-                CreatedWorlds[worldIndex] = WorldManager.CreateWorld();
-                Log($"Created world <color={ColorWorld}>#{worldIndex}</color>", LogLevel.Normal);
+                // Original behavior - create worlds automatically
+                var worldIndices = new HashSet<int>();
+
+                // Collect all specific world indices
+                foreach (var worldsList in ResolvedWorldIndices.Values)
+                {
+                    foreach (var index in worldsList)
+                    {
+                        if (index != AllWorldsIndex)
+                        {
+                            worldIndices.Add(index);
+                        }
+                    }
+                }
+
+                // Create worlds in order
+                var sortedIndices = worldIndices.OrderBy(i => i).ToList();
+                Log($"Creating {sortedIndices.Count} worlds in order:", LogLevel.Normal);
+                foreach (var worldIndex in sortedIndices)
+                {
+                    CreatedWorlds[worldIndex] = WorldManager.CreateWorld();
+                    Log($"Created world <color={ColorWorld}>#{worldIndex}</color>", LogLevel.Normal);
+                }
             }
+
+            // Validate world assignments
+            ValidateWorldAssignments();
 
             // Create and organize systems
             Log("<b>=== SYSTEM INITIALIZATION PHASE ===</b>", LogLevel.Minimal);
@@ -108,6 +211,90 @@ namespace UnsafeEcs.Core.Bootstrap
 
             Log($"Total initialization time: <color={ColorHighlight}>{m_stopwatch.ElapsedMilliseconds}ms</color>", LogLevel.Minimal);
             m_stopwatch.Stop();
+        }
+
+        // New method to validate that all required worlds exist
+        private static void ValidateWorldAssignments()
+        {
+            var missingWorlds = new List<int>();
+            var systemsWithMissingWorlds = new List<Type>();
+
+            foreach (var systemWorldPair in ResolvedWorldIndices)
+            {
+                var systemType = systemWorldPair.Key;
+                var worldIndices = systemWorldPair.Value;
+
+                foreach (var worldIndex in worldIndices)
+                {
+                    if (worldIndex != AllWorldsIndex && !CreatedWorlds.ContainsKey(worldIndex))
+                    {
+                        if (!missingWorlds.Contains(worldIndex))
+                            missingWorlds.Add(worldIndex);
+
+                        if (!systemsWithMissingWorlds.Contains(systemType))
+                            systemsWithMissingWorlds.Add(systemType);
+                    }
+                }
+            }
+
+            if (missingWorlds.Count > 0)
+            {
+                var missingWorldsStr = string.Join(", ", missingWorlds.Select(w => $"#{w}"));
+                var affectedSystemsStr = string.Join(", ", systemsWithMissingWorlds.Select(t => t.Name));
+
+                LogWarning($"Missing worlds: <color={ColorWorld}>{missingWorldsStr}</color>");
+                LogWarning($"Affected systems: <color={ColorSystem}>{affectedSystemsStr}</color>");
+
+                throw new InvalidOperationException(
+                    $"Required worlds are missing: {missingWorldsStr}. " +
+                    "Either provide these worlds in predefinedWorlds parameter or adjust system world assignments.");
+            }
+        }
+
+        // Method to get information about world requirements (useful for debugging)
+        public static Dictionary<int, List<Type>> GetWorldSystemRequirements(Assembly[] assemblies)
+        {
+            var tempCache = AnalyzeSystems(assemblies);
+            var result = new Dictionary<int, List<Type>>();
+
+            foreach (var systemWorldPair in tempCache.systemWorldIndices)
+            {
+                var systemType = systemWorldPair.Key;
+                var worldIndices = systemWorldPair.Value;
+
+                foreach (var worldIndex in worldIndices)
+                {
+                    if (worldIndex == AllWorldsIndex)
+                        continue; // Skip AllWorldsIndex in requirements
+
+                    if (!result.ContainsKey(worldIndex))
+                        result[worldIndex] = new List<Type>();
+
+                    result[worldIndex].Add(systemType);
+                }
+            }
+
+            return result;
+        }
+
+        // Method to get systems that will be added to all worlds
+        public static List<Type> GetAllWorldsSystems(Assembly[] assemblies)
+        {
+            var tempCache = AnalyzeSystems(assemblies);
+            var result = new List<Type>();
+
+            foreach (var systemWorldPair in tempCache.systemWorldIndices)
+            {
+                var systemType = systemWorldPair.Key;
+                var worldIndices = systemWorldPair.Value;
+
+                if (worldIndices.Contains(AllWorldsIndex))
+                {
+                    result.Add(systemType);
+                }
+            }
+
+            return result;
         }
 
         private static BootstrapCache AnalyzeSystems(Assembly[] assemblies)
