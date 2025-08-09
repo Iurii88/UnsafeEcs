@@ -12,11 +12,7 @@ namespace UnsafeEcs.Core.Components
         public ref T this[int index]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                var itemPtr = (byte*)m_chunkPtr->ptr + index * m_chunkPtr->componentSize;
-                return ref ((T*)itemPtr)[0];
-            }
+            get => ref ((T*)m_chunkPtr->ptr)[index];
         }
 
         public ComponentArray(ComponentChunk* chunk)
