@@ -7,6 +7,8 @@ namespace UnsafeEcs.Core.Systems
     {
         public readonly List<SystemBase> systems = new();
 
+        public override SystemUpdateMask UpdateMask => SystemUpdateMask.All;
+
         public void AddSystem(SystemBase system)
         {
             systems.Add(system);

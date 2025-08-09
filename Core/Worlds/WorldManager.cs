@@ -8,11 +8,10 @@ namespace UnsafeEcs.Core.Worlds
     public static class WorldManager
     {
         public static readonly List<World> Worlds = new();
-
+        
         public static void Initialize()
         {
             TypeManager.Initialize();
-            Worlds.Clear();
 
             var go = new GameObject();
             var worldUpdater = go.AddComponent<WorldUpdater>();
@@ -23,7 +22,6 @@ namespace UnsafeEcs.Core.Worlds
         public static void InitializeForTests()
         {
             TypeManager.Initialize();
-            Worlds.Clear();
 
             var go = new GameObject();
             var worldUpdater = go.AddComponent<WorldUpdater>();
