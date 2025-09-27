@@ -1,0 +1,110 @@
+﻿using System;
+using System.Runtime.CompilerServices;
+using Unity.Collections.LowLevel.Unsafe;
+using UnsafeEcs.Core.Entities;
+
+namespace UnsafeEcs.Core.Components
+{
+    public unsafe struct ComponentArray<T> where T : unmanaged
+    {
+        [NativeDisableUnsafePtrRestriction] private readonly ComponentChunk* m_chunkPtr;
+
+        public ref T this[int index]
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ref ((T*)m_chunkPtr->ptr)[index];
+        }
+
+        public ComponentArray(ComponentChunk* chunk)
+        {
+            m_chunkPtr = chunk;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T Get(int entityId)
+        {
+#if DEBUG
+            // Check bounds first to avoid memory access violation
+            if (entityId > m_chunkPtr->maxEntityId)
+                throw new InvalidOperationException($"Entity {entityId} does not have this component");
+#endif
+
+            var index = m_chunkPtr->componentIndices[entityId];
+#if DEBUG
+            if (index < 0)
+                throw new InvalidOperationException($"Entity {entityId} does not have this component");
+#endif
+
+            return ref this[index];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T Get(Entity entity)
+        {
+            return ref Get(entity.id);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Remove(int entityId)
+        {
+            return m_chunkPtr->Remove(entityId);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Remove(Entity entity)
+        {
+            return m_chunkPtr->Remove(entity.id);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(Entity entity, bool cleanComponent = false)
+        {
+            m_chunkPtr->Add(entity.id, cleanComponent);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(Entity entity, ref T component)
+        {
+            m_chunkPtr->Add(entity.id, UnsafeUtility.AddressOf(ref component));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(int entityId, bool cleanComponent = false)
+        {
+            m_chunkPtr->Add(entityId, cleanComponent);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Add(int entityId, ref T component)
+        {
+            m_chunkPtr->Add(entityId, UnsafeUtility.AddressOf(ref component));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Has(Entity entity)
+        {
+            return m_chunkPtr->HasComponent(entity.id);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool TryGet(Entity entity, out T component)
+        {
+            component = default;
+
+            if (entity.id > m_chunkPtr->maxEntityId)
+                return false;
+
+            var index = m_chunkPtr->componentIndices[entity.id];
+            if (index < 0)
+                return false;
+
+            component = this[index];
+            return true;
+        }
+
+        // Forwarding properties from the chunk for convenience
+        public int Length => m_chunkPtr->length;
+        public int Capacity => m_chunkPtr->capacity;
+        public int ComponentSize => m_chunkPtr->componentSize;
+    }
+}

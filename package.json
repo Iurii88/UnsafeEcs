@@ -1,0 +1,7 @@
+{
+  "name": "com.iurii88.unsafeecs",
+  "version": "0.7.1",
+  "displayName": "Unsafe ECS",
+  "description": "High-performance unsafe ECS framework for Unity",
+  "unity": "2021.3"
+}
