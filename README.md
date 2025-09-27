@@ -67,18 +67,55 @@ UnsafeECS runs exceptionally well on mobile devices—exactly where you need max
 
 ## Installation
 
-### As a Git Submodule (Recommended)
+### Option 1: Unity Package Manager (Git URL)
 
+Open Package Manager (Window → Package Manager), click "+" → "Add package from git URL..." and enter:
 ```
-git submodule add git@github.com:Iurii88/UnsafeEcs.git Assets/Plugins/UnsafeEcs
+https://github.com/Iurii88/UnsafeEcs.git
 ```
 
-### Manual Installation
-
-Clone or download the repository and place it in your Unity project's Assets folder:
-
+Or add directly to `Packages/manifest.json`:
+```json
+{
+  "dependencies": {
+    "com.iurii88.unsafeecs": "https://github.com/Iurii88/UnsafeEcs.git"
+  }
+}
 ```
-git clone git@github.com:Iurii88/UnsafeEcs.git Assets/Plugins/UnsafeEcs
+
+To install a specific version, use tags:
+```json
+"com.iurii88.unsafeecs": "https://github.com/Iurii88/UnsafeEcs.git#v0.1.0"
+```
+
+### Option 2: Git Submodule
+
+Add as a submodule to your Assets folder:
+```bash
+git submodule add https://github.com/Iurii88/UnsafeEcs.git Assets/Scripts/UnsafeEcs
+git submodule update --init --recursive
+```
+
+### Requirements
+
+- Unity 2021.3 or newer
+- Enable "Allow 'unsafe' code" in Player Settings (Edit → Project Settings → Player → Other Settings)
+
+### Verify Installation
+
+After installation, you should be able to use the library:
+```csharp
+using UnsafeEcs;
+
+public class TestSystem : MonoBehaviour 
+{
+    private EcsWorld world;
+    
+    void Start() 
+    {
+        world = new EcsWorld();
+    }
+}
 ```
 
 ## Critical Note: Thread Safety
