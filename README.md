@@ -101,23 +101,6 @@ git submodule update --init --recursive
 - Unity 2021.3 or newer
 - Enable "Allow 'unsafe' code" in Player Settings (Edit → Project Settings → Player → Other Settings)
 
-### Verify Installation
-
-After installation, you should be able to use the library:
-```csharp
-using UnsafeEcs;
-
-public class TestSystem : MonoBehaviour 
-{
-    private EcsWorld world;
-    
-    void Start() 
-    {
-        world = new EcsWorld();
-    }
-}
-```
-
 ## Critical Note: Thread Safety
 
 ### ⚠️ Important Thread Safety Considerations
