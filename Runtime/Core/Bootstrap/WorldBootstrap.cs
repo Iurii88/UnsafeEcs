@@ -40,6 +40,8 @@ namespace UnsafeEcs.Core.Bootstrap
         private static BootstrapCache m_cache;
         private static Stopwatch m_stopwatch;
 
+        public static Action<SystemBase> onSystemCreated;
+
         // Original method for backwards compatibility
         public static void Initialize(Assembly[] assemblies, LogLevel logLevel = LogLevel.Normal)
         {
@@ -491,6 +493,7 @@ namespace UnsafeEcs.Core.Bootstrap
                         foreach (var worldEntry in CreatedWorlds)
                         {
                             var instance = (SystemBase)Activator.CreateInstance(type);
+                            onSystemCreated?.Invoke(instance);
                             systemInstancesByWorld[type][worldEntry.Key] = instance;
                             Log($"Instantiated system <color={ColorSystem}>{type.Name}</color> in world <color={ColorWorld}>#{worldEntry.Key}</color> (all worlds mode)", LogLevel.Verbose);
                         }
@@ -503,6 +506,7 @@ namespace UnsafeEcs.Core.Bootstrap
                             if (CreatedWorlds.TryGetValue(worldIndex, out _))
                             {
                                 var instance = (SystemBase)Activator.CreateInstance(type);
+                                onSystemCreated?.Invoke(instance);
                                 systemInstancesByWorld[type][worldIndex] = instance;
                                 Log($"Instantiated system <color={ColorSystem}>{type.Name}</color> in world <color={ColorWorld}>#{worldIndex}</color>", LogLevel.Verbose);
                             }
