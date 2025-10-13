@@ -58,21 +58,17 @@ namespace UnsafeEcs.Core.Entities
         // Dispose the contained chunk
         public void Dispose()
         {
-            if (chunkPtr != null)
-            {
-                if (isBuffer)
-                {
-                    ((BufferChunk*)chunkPtr)->Dispose();
-                    UnsafeUtility.Free(chunkPtr, Allocator.Persistent);
-                }
-                else
-                {
-                    ((ComponentChunk*)chunkPtr)->Dispose();
-                    UnsafeUtility.Free(chunkPtr, Allocator.Persistent);
-                }
+            if (chunkPtr == null)
+                return;
 
-                chunkPtr = null;
-            }
+            if (isBuffer)
+                ((BufferChunk*)chunkPtr)->Dispose();
+            else
+                ((ComponentChunk*)chunkPtr)->Dispose();
+
+            UnsafeUtility.Free(chunkPtr, Allocator.Persistent);
+
+            chunkPtr = null;
         }
     }
 }

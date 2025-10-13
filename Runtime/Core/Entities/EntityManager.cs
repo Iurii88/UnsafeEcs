@@ -22,7 +22,8 @@ namespace UnsafeEcs.Core.Entities
 
         private UnsafeHashMap<ulong, QueryCacheEntry> m_queryCache;
 
-        [NativeDisableUnsafePtrRestriction] private EntityManager* m_managerPtr;
+        [NativeDisableUnsafePtrRestriction]
+        private EntityManager* m_managerPtr;
 
         public EntityManager(int initialCapacity)
         {

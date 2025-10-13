@@ -178,10 +178,6 @@ namespace UnsafeEcs.Core.Components
         {
         }
 
-        private struct CacheIsRegisteredKey<T> where T : unmanaged
-        {
-        }
-
         private struct CacheVersionKey<T> where T : unmanaged
         {
         }

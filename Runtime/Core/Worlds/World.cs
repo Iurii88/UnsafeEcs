@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
+using UnsafeEcs.Core.Components.Managed;
 using UnsafeEcs.Core.Entities;
 using UnsafeEcs.Core.Systems;
 using UnsafeEcs.Core.Utils;
@@ -19,6 +20,7 @@ namespace UnsafeEcs.Core.Worlds
         public float elapsedFixedDeltaTime;
         public ReferenceWrapper<EntityManager> entityManagerWrapper;
 
+        public readonly ManagedStorage managedStorage = new();
         private EntityManager m_entityManager;
 
         public World()
@@ -52,14 +54,12 @@ namespace UnsafeEcs.Core.Worlds
             var dependency = default(JobHandle);
 
             foreach (var system in rootSystems)
-            {
                 if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
                 {
                     system.dependency = dependency;
                     system.OnUpdate();
                     dependency = system.dependency;
                 }
-            }
 
             dependency.Complete();
         }
@@ -69,14 +69,12 @@ namespace UnsafeEcs.Core.Worlds
             var dependency = default(JobHandle);
 
             foreach (var system in rootSystems)
-            {
                 if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
                 {
                     system.dependency = dependency;
                     system.OnLateUpdate();
                     dependency = system.dependency;
                 }
-            }
 
             dependency.Complete();
         }
@@ -88,14 +86,12 @@ namespace UnsafeEcs.Core.Worlds
             var dependency = default(JobHandle);
 
             foreach (var system in rootSystems)
-            {
                 if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
                 {
                     system.dependency = dependency;
                     system.OnFixedUpdate();
                     dependency = system.dependency;
                 }
-            }
 
             dependency.Complete();
         }
@@ -137,11 +133,12 @@ namespace UnsafeEcs.Core.Worlds
         {
             return EntityManager.CreateEntity();
         }
+
         public Entity CreateEntity(EntityArchetype archetype)
         {
             return EntityManager.CreateEntity(archetype);
         }
-        
+
         public UnsafeList<Entity> CreateEntities(EntityArchetype archetype, int count, Allocator allocator)
         {
             return EntityManager.CreateEntities(archetype, count, allocator);
@@ -150,6 +147,6 @@ namespace UnsafeEcs.Core.Worlds
         public void DestroyEntity(Entity entity)
         {
             EntityManager.DestroyEntity(entity);
-        } 
+        }
     }
 }

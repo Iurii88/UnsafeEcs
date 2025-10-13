@@ -82,6 +82,8 @@ namespace UnsafeEcs.Core.Worlds
         {
             foreach (var world in Worlds)
                 world.Dispose();
+            
+            Worlds.Clear();
             TypeManager.Dispose();
         }
     }
