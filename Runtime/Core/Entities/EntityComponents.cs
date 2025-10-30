@@ -1,4 +1,6 @@
 ﻿using UnsafeEcs.Core.Components;
+using UnsafeEcs.Core.Components.Managed;
+using UnsafeEcs.Core.Worlds;
 
 namespace UnsafeEcs.Core.Entities
 {
@@ -56,6 +58,31 @@ namespace UnsafeEcs.Core.Entities
             if (!HasComponent<T>())
                 AddComponent(defaultValue);
             return ref GetComponent<T>();
+        }
+
+        public void AddReference<T>(World world, T reference) where T : class
+        {
+            var refComponent = world.managedStorage.Add(reference);
+            AddComponent(refComponent);
+        }
+
+        public bool TryGetReference<T>(World world, out T reference) where T : class
+        {
+            if (!HasComponent<ManagedRef<T>>())
+            {
+                reference = null;
+                return false;
+            }
+
+            reference = GetReference<T>(world);
+            return true;
+        }
+
+        public T GetReference<T>(World world) where T : class
+        {
+            ref var managedRef = ref GetComponent<ManagedRef<T>>();
+            var reference = managedRef.Get(world);
+            return reference;
         }
     }
 }
