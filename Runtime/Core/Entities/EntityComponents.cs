@@ -60,13 +60,13 @@ namespace UnsafeEcs.Core.Entities
             return ref GetComponent<T>();
         }
 
-        public void AddReference<T>(World world, T reference) where T : class
+        public void AddReference<T>(T reference) where T : class
         {
-            var refComponent = world.managedStorage.Add(reference);
+            var refComponent = managerPtr->world.managedStorage.Add(reference);
             AddComponent(refComponent);
         }
 
-        public bool TryGetReference<T>(World world, out T reference) where T : class
+        public bool TryGetReference<T>(out T reference) where T : class
         {
             if (!HasComponent<ManagedRef<T>>())
             {
@@ -74,14 +74,14 @@ namespace UnsafeEcs.Core.Entities
                 return false;
             }
 
-            reference = GetReference<T>(world);
+            reference = GetReference<T>();
             return true;
         }
 
-        public T GetReference<T>(World world) where T : class
+        public T GetReference<T>() where T : class
         {
             ref var managedRef = ref GetComponent<ManagedRef<T>>();
-            var reference = managedRef.Get(world);
+            var reference = managedRef.Get(managerPtr->world);
             return reference;
         }
     }
