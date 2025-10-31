@@ -25,14 +25,14 @@ namespace UnsafeEcs.Core.Worlds
 
         public World()
         {
-            m_entityManager = new EntityManager(EntityManager.InitialEntityCapacity);
+            m_entityManager = new EntityManager(this, EntityManager.InitialEntityCapacity);
             m_entityManager.Initialize();
             entityManagerWrapper = new ReferenceWrapper<EntityManager>(ref m_entityManager);
         }
 
         public World(int initialCapacity = 0)
         {
-            m_entityManager = new EntityManager(initialCapacity);
+            m_entityManager = new EntityManager(this, initialCapacity);
             m_entityManager.Initialize();
             entityManagerWrapper = new ReferenceWrapper<EntityManager>(ref m_entityManager);
         }

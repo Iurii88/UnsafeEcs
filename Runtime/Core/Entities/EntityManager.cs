@@ -1,7 +1,10 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Utils;
+using UnsafeEcs.Core.Worlds;
 
 namespace UnsafeEcs.Core.Entities
 {
@@ -24,9 +27,13 @@ namespace UnsafeEcs.Core.Entities
 
         [NativeDisableUnsafePtrRestriction]
         private EntityManager* m_managerPtr;
-
-        public EntityManager(int initialCapacity)
+        
+        private readonly IntPtr m_worldHandle;
+        public World world => (World)GCHandle.FromIntPtr(m_worldHandle).Target;
+        
+        public EntityManager(World world, int initialCapacity)
         {
+            m_worldHandle = GCHandle.ToIntPtr(GCHandle.Alloc(world));
             chunks = new UnsafeList<ChunkUnion>(InitialChunkCapacity, Allocator.Persistent);
 
             entities = new UnsafeList<Entity>(initialCapacity, Allocator.Persistent);
@@ -65,6 +72,8 @@ namespace UnsafeEcs.Core.Entities
 
         public void Clear()
         {
+            GCHandle.FromIntPtr(m_worldHandle).Free();
+            
             foreach (var chunk in chunks)
                 chunk.Dispose();
             chunks.Clear();
