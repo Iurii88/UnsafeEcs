@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnsafeEcs.Core.Components;
@@ -57,7 +58,14 @@ namespace UnsafeEcs.Core.Worlds
             for (var i = 0; i < Worlds.Count; i++)
             {
                 var world = Worlds[i];
-                world.Dispose();
+                try
+                {
+                    world.Dispose();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
             }
 
             Worlds.Clear();
