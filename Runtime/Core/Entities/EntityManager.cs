@@ -27,10 +27,10 @@ namespace UnsafeEcs.Core.Entities
 
         [NativeDisableUnsafePtrRestriction]
         private EntityManager* m_managerPtr;
-        
+
         private readonly IntPtr m_worldHandle;
         public World world => (World)GCHandle.FromIntPtr(m_worldHandle).Target;
-        
+
         public EntityManager(World world, int initialCapacity)
         {
             m_worldHandle = GCHandle.ToIntPtr(GCHandle.Alloc(world));
@@ -55,7 +55,12 @@ namespace UnsafeEcs.Core.Entities
         public void Dispose()
         {
             for (var i = 0; i < chunks.Length; i++)
+            {
+                if (!chunks.Ptr[i].IsValid)
+                    continue;
+
                 chunks.Ptr[i].Dispose();
+            }
             chunks.Dispose();
 
             entities.Dispose();
@@ -73,7 +78,7 @@ namespace UnsafeEcs.Core.Entities
         public void Clear()
         {
             GCHandle.FromIntPtr(m_worldHandle).Free();
-            
+
             foreach (var chunk in chunks)
                 chunk.Dispose();
             chunks.Clear();

@@ -40,14 +40,16 @@ namespace UnsafeEcs.Core.Entities
         private void EnsureBufferChunkExists(int typeIndex, int maxEntityId)
         {
             if (typeIndex >= chunks.Length)
-            {
-                chunks.Resize(typeIndex + 1);
-
-                var elementSize = TypeManager.GetTypeSizeByIndex(typeIndex);
-                var bufferChunk = (BufferChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BufferChunk>(), UnsafeUtility.AlignOf<BufferChunk>(), Allocator.Persistent);
-                *bufferChunk = new BufferChunk(elementSize, InitialEntityCapacity, maxEntityId, typeIndex, m_managerPtr);
-                chunks.Ptr[typeIndex] = ChunkUnion.FromBufferChunk(bufferChunk);
-            }
+                chunks.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
+            
+            if (chunks.Ptr[typeIndex].IsValid)
+                return;
+            
+            var elementSize = TypeManager.GetTypeSizeByIndex(typeIndex);
+            var bufferChunk = (BufferChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BufferChunk>(), UnsafeUtility.AlignOf<BufferChunk>(), Allocator.Persistent);
+            *bufferChunk = new BufferChunk(elementSize, InitialEntityCapacity, maxEntityId, typeIndex, m_managerPtr);
+            chunks.Ptr[typeIndex] = ChunkUnion.FromBufferChunk(bufferChunk);
+            
         }
 
         public DynamicBuffer<T> GetBuffer<T>(Entity entity) where T : unmanaged, IBufferElement

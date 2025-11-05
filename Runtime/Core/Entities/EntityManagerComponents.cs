@@ -28,15 +28,16 @@ namespace UnsafeEcs.Core.Entities
         private void EnsureComponentChunkExists(int typeIndex)
         {
             if (typeIndex >= chunks.Length)
-            {
-                chunks.Resize(typeIndex + 1);
+                chunks.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
 
-                var size = TypeManager.GetTypeSizeByIndex(typeIndex);
-                var stackChunk = new ComponentChunk(size, InitialEntityCapacity, typeIndex, m_managerPtr);
-                var chunk = (ComponentChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<ComponentChunk>(), UnsafeUtility.AlignOf<ComponentChunk>(), Allocator.Persistent);
-                UnsafeUtility.CopyStructureToPtr(ref stackChunk, chunk);
-                chunks.Ptr[typeIndex] = ChunkUnion.FromComponentChunk(chunk);
-            }
+            if (chunks.Ptr[typeIndex].IsValid)
+                return;
+            
+            var size = TypeManager.GetTypeSizeByIndex(typeIndex);
+            var stackChunk = new ComponentChunk(size, InitialEntityCapacity, typeIndex, m_managerPtr);
+            var chunk = (ComponentChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<ComponentChunk>(), UnsafeUtility.AlignOf<ComponentChunk>(), Allocator.Persistent);
+            UnsafeUtility.CopyStructureToPtr(ref stackChunk, chunk);
+            chunks.Ptr[typeIndex] = ChunkUnion.FromComponentChunk(chunk);
         }
 
         public void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent
@@ -97,7 +98,8 @@ namespace UnsafeEcs.Core.Entities
             if (typeIndex < chunks.Length)
             {
                 var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
-                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id)) return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
+                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id))
+                    return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
             }
 
             var component = default(T);
@@ -116,7 +118,8 @@ namespace UnsafeEcs.Core.Entities
             if (typeIndex < chunks.Length)
             {
                 var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
-                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id)) return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
+                if (chunk != null && entity.id <= chunk->maxEntityId && chunk->HasComponent(entity.id))
+                    return ref UnsafeUtility.AsRef<T>(chunk->GetComponentPtr(entity.id));
             }
 
             AddComponent(entity, defaultValue);
