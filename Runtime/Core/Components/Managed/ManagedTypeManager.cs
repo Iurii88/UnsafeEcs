@@ -79,7 +79,7 @@ namespace UnsafeEcs.Core.Components.Managed
         // Type cache static storage
         private static class Cache<T> where T : class
         {
-            public static readonly SharedStatic<int> TypeIndex = SharedStatic<int>.GetOrCreate<CacheTypeIndexKey>();
+            public static readonly SharedStatic<int> TypeIndex = SharedStatic<int>.GetOrCreate<CacheTypeIndexKey<T>>();
             public static readonly SharedStatic<int> Version = SharedStatic<int>.GetOrCreate<CacheVersionKey<T>>();
         }
 
@@ -101,7 +101,7 @@ namespace UnsafeEcs.Core.Components.Managed
         }
 
         // Key types for Cache<T>
-        private struct CacheTypeIndexKey
+        private struct CacheTypeIndexKey<T> where T : class
         {
         }
 
