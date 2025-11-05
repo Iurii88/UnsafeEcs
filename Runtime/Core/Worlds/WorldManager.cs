@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnsafeEcs.Core.Components;
+using UnsafeEcs.Core.Components.Managed;
 using Object = UnityEngine.Object;
 
 namespace UnsafeEcs.Core.Worlds
@@ -8,10 +9,11 @@ namespace UnsafeEcs.Core.Worlds
     public static class WorldManager
     {
         public static readonly List<World> Worlds = new();
-        
+
         public static void Initialize()
         {
             TypeManager.Initialize();
+            ManagedTypeManager.Initialize();
 
             var go = new GameObject();
             var worldUpdater = go.AddComponent<WorldUpdater>();
@@ -22,6 +24,7 @@ namespace UnsafeEcs.Core.Worlds
         public static void InitializeForTests()
         {
             TypeManager.Initialize();
+            ManagedTypeManager.Initialize();
 
             var go = new GameObject();
             var worldUpdater = go.AddComponent<WorldUpdater>();
@@ -65,7 +68,7 @@ namespace UnsafeEcs.Core.Worlds
             foreach (var world in Worlds)
                 world.Update(deltaTime);
         }
-        
+
         public static void LateUpdate(float deltaTime)
         {
             foreach (var world in Worlds)
@@ -82,9 +85,10 @@ namespace UnsafeEcs.Core.Worlds
         {
             foreach (var world in Worlds)
                 world.Dispose();
-            
+
             Worlds.Clear();
             TypeManager.Dispose();
+            ManagedTypeManager.Dispose();
         }
     }
 
@@ -94,12 +98,12 @@ namespace UnsafeEcs.Core.Worlds
         {
             WorldManager.Update(Time.deltaTime);
         }
-        
+
         private void LateUpdate()
         {
             WorldManager.LateUpdate(Time.deltaTime);
         }
-        
+
         private void FixedUpdate()
         {
             WorldManager.FixedUpdate(Time.fixedDeltaTime);
