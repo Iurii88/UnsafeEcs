@@ -5,8 +5,8 @@ using UnsafeEcs.Core.Systems;
 namespace UnsafeEcs.Additions.Groups
 {
     [UpdateInWorld(WorldBootstrap.AllWorldsIndex)]
-    [UpdateAfter(typeof(AllWorldInitializationSystemGroup))]
-    public class AllWorldSimulationSystemGroup : SystemGroup
+    [UpdateAfter(typeof(RenderingSystemGroup))]
+    public class CleanUpSystemGroup : SystemGroup
     {
     }
 }
