@@ -83,5 +83,23 @@ namespace UnsafeEcs.Core.Entities
             var reference = managedRef.Get(managerPtr->world);
             return reference;
         }
+
+        public void RemoveReference<T>() where T : class
+        {
+            RemoveComponent<ManagedRef<T>>();
+        }
+
+        public void SetReference<T>(T reference) where T : class
+        {
+            if (HasComponent<ManagedRef<T>>())
+            {
+                var refComponent = managerPtr->world.managedStorage.Add(reference);
+                SetComponent(refComponent);
+            }
+            else
+            {
+                AddReference(reference);
+            }
+        }
     }
 }
