@@ -89,6 +89,11 @@ namespace UnsafeEcs.Core.Entities
             RemoveComponent<ManagedRef<T>>();
         }
 
+        public bool HasReference<T>() where T : class
+        {
+            return HasComponent<ManagedRef<T>>();
+        }
+
         public void SetReference<T>(T reference) where T : class
         {
             if (HasComponent<ManagedRef<T>>())
