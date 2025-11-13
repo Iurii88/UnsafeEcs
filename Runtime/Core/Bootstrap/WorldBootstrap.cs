@@ -43,26 +43,26 @@ namespace UnsafeEcs.Core.Bootstrap
         public static Action<SystemBase> onSystemCreated;
 
         // Original method for backwards compatibility
-        public static void Initialize(Assembly[] assemblies, LogLevel logLevel = LogLevel.Normal)
+        public static void Initialize(Assembly[] assemblies, WorldBootstrapOptions options)
         {
-            m_currentLogLevel = logLevel;
-            WorldManager.Initialize();
+            m_currentLogLevel = options.logLevel;
+            WorldManager.Initialize(options.dontDestroyOnLoad);
             InitializeWorlds(assemblies);
         }
 
         // New method for using predefined worlds
-        public static void Initialize(Assembly[] assemblies, Dictionary<int, World> worlds, LogLevel logLevel = LogLevel.Normal)
+        public static void Initialize(Assembly[] assemblies, Dictionary<int, World> worlds, WorldBootstrapOptions options)
         {
-            m_currentLogLevel = logLevel;
-            WorldManager.Initialize();
+            m_currentLogLevel = options.logLevel;
+            WorldManager.Initialize(options.dontDestroyOnLoad);
             InitializeWorlds(assemblies, worlds);
         }
 
         // Alternative overload with world list (indices will be auto-assigned starting from 0)
-        public static void Initialize(Assembly[] assemblies, List<World> worlds, LogLevel logLevel = LogLevel.Normal)
+        public static void Initialize(Assembly[] assemblies, List<World> worlds, WorldBootstrapOptions options)
         {
-            m_currentLogLevel = logLevel;
-            WorldManager.Initialize();
+            m_currentLogLevel = options.logLevel;
+            WorldManager.Initialize(options.dontDestroyOnLoad);
 
             // Convert list to dictionary with auto-assigned indices
             var worldDict = new Dictionary<int, World>();
