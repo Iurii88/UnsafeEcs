@@ -11,15 +11,19 @@ namespace UnsafeEcs.Core.Worlds
     {
         public static readonly List<World> Worlds = new();
 
-        public static void Initialize()
+        public static void Initialize(bool dontDestroyOnLoad = true)
         {
             TypeManager.Initialize();
             ManagedTypeManager.Initialize();
 
-            var go = new GameObject();
+            var go = new GameObject
+            {
+                name = "UnsafeEcs World Manager"
+            };
             var worldUpdater = go.AddComponent<WorldUpdater>();
             worldUpdater.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
-            Object.DontDestroyOnLoad(go);
+            if (dontDestroyOnLoad)
+                Object.DontDestroyOnLoad(go);
         }
 
         public static void InitializeForTests()
