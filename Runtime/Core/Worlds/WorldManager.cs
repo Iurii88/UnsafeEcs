@@ -25,7 +25,7 @@ namespace UnsafeEcs.Core.Worlds
                 name = "UnsafeEcs World Manager"
             };
             var worldUpdater = m_worldManagerGo.AddComponent<WorldUpdater>();
-            
+
             if (dontDestroyOnLoad)
             {
                 worldUpdater.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
@@ -81,7 +81,12 @@ namespace UnsafeEcs.Core.Worlds
 
             Worlds.Clear();
         }
-        
+
+        public static void Destroy()
+        {
+            Object.Destroy(m_worldManagerGo);
+        }
+
         public static void OnDestroy()
         {
             foreach (var world in Worlds)
