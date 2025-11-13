@@ -11,19 +11,23 @@ namespace UnsafeEcs.Core.Worlds
     {
         public static readonly List<World> Worlds = new();
 
+        private static GameObject m_worldManagerGo;
+        private static bool m_dontDestroyOnLoadPrivate;
+
         public static void Initialize(bool dontDestroyOnLoad = true)
         {
+            m_dontDestroyOnLoadPrivate = dontDestroyOnLoad;
             TypeManager.Initialize();
             ManagedTypeManager.Initialize();
 
-            var go = new GameObject
+            m_worldManagerGo = new GameObject
             {
                 name = "UnsafeEcs World Manager"
             };
-            var worldUpdater = go.AddComponent<WorldUpdater>();
+            var worldUpdater = m_worldManagerGo.AddComponent<WorldUpdater>();
             worldUpdater.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
             if (dontDestroyOnLoad)
-                Object.DontDestroyOnLoad(go);
+                Object.DontDestroyOnLoad(m_worldManagerGo);
         }
 
         public static void InitializeForTests()
@@ -101,6 +105,9 @@ namespace UnsafeEcs.Core.Worlds
             Worlds.Clear();
             TypeManager.Dispose();
             ManagedTypeManager.Dispose();
+
+            if (!m_dontDestroyOnLoadPrivate)
+                Object.Destroy(m_worldManagerGo);
         }
     }
 
