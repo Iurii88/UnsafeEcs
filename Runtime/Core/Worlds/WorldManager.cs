@@ -25,9 +25,12 @@ namespace UnsafeEcs.Core.Worlds
                 name = "UnsafeEcs World Manager"
             };
             var worldUpdater = m_worldManagerGo.AddComponent<WorldUpdater>();
-            worldUpdater.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
+            
             if (dontDestroyOnLoad)
+            {
+                worldUpdater.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
                 Object.DontDestroyOnLoad(m_worldManagerGo);
+            }
         }
 
         public static void InitializeForTests()
@@ -78,6 +81,19 @@ namespace UnsafeEcs.Core.Worlds
 
             Worlds.Clear();
         }
+        
+        public static void OnDestroy()
+        {
+            foreach (var world in Worlds)
+                world.Dispose();
+
+            Worlds.Clear();
+            TypeManager.Dispose();
+            ManagedTypeManager.Dispose();
+
+            if (!m_dontDestroyOnLoadPrivate)
+                Object.Destroy(m_worldManagerGo);
+        }
 
         public static void Update(float deltaTime)
         {
@@ -95,19 +111,6 @@ namespace UnsafeEcs.Core.Worlds
         {
             foreach (var world in Worlds)
                 world.FixedUpdate(deltaTime);
-        }
-
-        public static void OnDestroy()
-        {
-            foreach (var world in Worlds)
-                world.Dispose();
-
-            Worlds.Clear();
-            TypeManager.Dispose();
-            ManagedTypeManager.Dispose();
-
-            if (!m_dontDestroyOnLoadPrivate)
-                Object.Destroy(m_worldManagerGo);
         }
     }
 
