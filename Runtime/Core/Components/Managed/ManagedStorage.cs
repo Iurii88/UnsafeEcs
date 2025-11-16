@@ -5,12 +5,16 @@ namespace UnsafeEcs.Core.Components.Managed
     public class ManagedStorage
     {
         private readonly Dictionary<int, object> poolsByTypeId = new();
+        private readonly int storageId;
 
-        // Type-level cache to avoid dictionary lookups on Get
-        private static class PoolCache<T> where T : class
+        public ManagedStorage()
         {
-            public static ManagedPool<T> pool;
-            public static ManagedStorage owner;
+            storageId = ManagedStorageRegistry.Register(this);
+        }
+
+        ~ManagedStorage()
+        {
+            ManagedStorageRegistry.Unregister(storageId);
         }
 
         public ManagedRef<T> Add<T>(T obj) where T : class
@@ -22,22 +26,15 @@ namespace UnsafeEcs.Core.Components.Managed
             return new ManagedRef<T>
             {
                 objectId = objectId,
-                version = pool.GetVersion(objectId)
+                version = pool.GetVersion(objectId),
+                storageId = storageId
             };
         }
 
         public T Get<T>(ref ManagedRef<T> refComp) where T : class
         {
-            // Check cached pool first
-            var pool = PoolCache<T>.pool;
-            if (pool == null || PoolCache<T>.owner != this)
-            {
-                // Cache miss - lookup and cache
-                var typeId = ManagedRef<T>.GetTypeId();
-                pool = (ManagedPool<T>)poolsByTypeId[typeId];
-                PoolCache<T>.pool = pool;
-                PoolCache<T>.owner = this;
-            }
+            var typeId = ManagedRef<T>.GetTypeId();
+            var pool = (ManagedPool<T>)poolsByTypeId[typeId];
             return pool.Get(refComp.objectId, refComp.version);
         }
 

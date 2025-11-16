@@ -7,15 +7,13 @@ namespace UnsafeEcs.Core.Components.Managed
     {
         public int objectId;
         public int version;
+        public int storageId;
 
-        public T Get(ManagedStorage managedStorage)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T Get()
         {
-            return managedStorage.Get(ref this);
-        }
-
-        public T Get(World world)
-        {
-            return world.managedStorage.Get(ref this);
+            var storage = ManagedStorageRegistry.Get(storageId);
+            return storage.Get(ref this);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

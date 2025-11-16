@@ -80,7 +80,7 @@ namespace UnsafeEcs.Core.Entities
         public T GetReference<T>() where T : class
         {
             ref var managedRef = ref GetComponent<ManagedRef<T>>();
-            var reference = managedRef.Get(managerPtr->world);
+            var reference = managedRef.Get();
             return reference;
         }
 
