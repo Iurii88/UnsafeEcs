@@ -750,10 +750,16 @@ namespace UnsafeEcs.Core.Bootstrap
         {
             var graph = new Dictionary<SystemBase, List<SystemBase>>();
 
+            // First pass: Initialize all systems in the graph
+            foreach (var system in systems)
+            {
+                graph[system] = new List<SystemBase>();
+            }
+
+            // Second pass: Process all dependencies
             foreach (var system in systems)
             {
                 var systemType = system.GetType();
-                graph[system] = new List<SystemBase>();
 
                 // Process UpdateAfter attributes
                 foreach (var attr in systemType.GetCustomAttributes<UpdateAfterAttribute>())
