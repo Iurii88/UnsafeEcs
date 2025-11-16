@@ -38,9 +38,13 @@ namespace UnsafeEcs.Core.Worlds
             TypeManager.Initialize();
             ManagedTypeManager.Initialize();
 
-            var go = new GameObject();
-            var worldUpdater = go.AddComponent<WorldUpdater>();
+            m_worldManagerGo = new GameObject
+            {
+                name = "UnsafeEcs World Manager (Test)"
+            };
+            var worldUpdater = m_worldManagerGo.AddComponent<WorldUpdater>();
             worldUpdater.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
+            m_dontDestroyOnLoadPrivate = false;
         }
 
         public static World CreateWorld(int initialCapacity = 0)
@@ -84,7 +88,16 @@ namespace UnsafeEcs.Core.Worlds
 
         public static void Destroy()
         {
-            Object.Destroy(m_worldManagerGo);
+            if (m_worldManagerGo != null)
+            {
+                // Use DestroyImmediate in edit mode, Destroy in play mode
+                if (Application.isPlaying)
+                    Object.Destroy(m_worldManagerGo);
+                else
+                    Object.DestroyImmediate(m_worldManagerGo);
+
+                m_worldManagerGo = null;
+            }
         }
 
         public static void OnDestroy()
@@ -96,8 +109,16 @@ namespace UnsafeEcs.Core.Worlds
             TypeManager.Dispose();
             ManagedTypeManager.Dispose();
 
-            if (!m_dontDestroyOnLoadPrivate)
-                Object.Destroy(m_worldManagerGo);
+            if (m_worldManagerGo != null && !m_dontDestroyOnLoadPrivate)
+            {
+                // Use DestroyImmediate in edit mode (tests), Destroy in play mode
+                if (Application.isPlaying)
+                    Object.Destroy(m_worldManagerGo);
+                else
+                    Object.DestroyImmediate(m_worldManagerGo);
+
+                m_worldManagerGo = null;
+            }
         }
 
         public static void Update(float deltaTime)
