@@ -22,6 +22,7 @@ namespace UnsafeEcs.Core.Systems
         public JobHandle dependency;
         public World world;
         public ReferenceWrapper<EntityManager> entityManagerWrapper => world.entityManagerWrapper;
+        public ref EntityManager entityManager => ref world.EntityManager;
 
         public virtual SystemUpdateMask UpdateMask { get; set; } = SystemUpdateMask.Update;
 
