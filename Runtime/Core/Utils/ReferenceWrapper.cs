@@ -20,5 +20,11 @@ namespace UnsafeEcs.Core.Utils
                 ptr = localPtr;
             }
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ReferenceWrapper(T* valuePtr)
+        {
+            ptr = valuePtr;
+        }
     }
 }

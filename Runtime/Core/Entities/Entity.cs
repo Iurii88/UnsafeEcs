@@ -1,4 +1,5 @@
 ﻿using System;
+using UnsafeEcs.Core.Utils;
 
 namespace UnsafeEcs.Core.Entities
 {
@@ -19,6 +20,8 @@ namespace UnsafeEcs.Core.Entities
                 return ref *ptr;
             }
         }
+        
+        public ReferenceWrapper<EntityManager> ManagerWrapper => new(managerPtr);
 
         public readonly void Destroy()
         {
