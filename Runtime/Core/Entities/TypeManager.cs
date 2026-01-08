@@ -88,6 +88,10 @@ namespace UnsafeEcs.Core.Components
             TypeOrder.Data.Add(hash);
             TypeSizes.Data.Add(UnsafeUtility.SizeOf<T>());
             IsBufferList.Data.Add(isBuffer);
+
+            // Register for editor lookup (non-Burst path)
+            RegisterTypeForEditor<T>();
+
             return newIndex;
         }
 
@@ -136,6 +140,50 @@ namespace UnsafeEcs.Core.Components
 
             // Invalidate all caches by incrementing the global cache version
             CacheVersion.Data++;
+
+            // Clear editor registry
+            ClearEditorRegistry();
+        }
+
+        // Registry for editor: maps hash to Type (populated at runtime when types are registered)
+        // Lazy-initialized to avoid Burst compilation issues with managed types
+        private static System.Collections.Generic.Dictionary<long, System.Type> s_hashToTypeRegistry;
+
+        [Unity.Burst.BurstDiscard]
+        private static void EnsureEditorRegistryCreated()
+        {
+            if (s_hashToTypeRegistry == null)
+                s_hashToTypeRegistry = new System.Collections.Generic.Dictionary<long, System.Type>();
+        }
+
+        /// <summary>
+        /// Registers a type's hash for editor lookup. Called during component registration.
+        /// </summary>
+        [Unity.Burst.BurstDiscard]
+        public static void RegisterTypeForEditor<T>() where T : unmanaged
+        {
+            EnsureEditorRegistryCreated();
+            var hash = BurstRuntime.GetHashCode64<T>();
+            s_hashToTypeRegistry[hash] = typeof(T);
+        }
+
+        /// <summary>
+        /// Gets the Type for a given hash. Used by editor tools.
+        /// </summary>
+        [Unity.Burst.BurstDiscard]
+        public static System.Type GetTypeFromHash(long hash)
+        {
+            EnsureEditorRegistryCreated();
+            return s_hashToTypeRegistry.TryGetValue(hash, out var type) ? type : null;
+        }
+
+        /// <summary>
+        /// Clears the editor type registry.
+        /// </summary>
+        [Unity.Burst.BurstDiscard]
+        public static void ClearEditorRegistry()
+        {
+            s_hashToTypeRegistry?.Clear();
         }
 
         // Type cache static storage

@@ -238,15 +238,14 @@ namespace UnsafeEcs.Editor
 
         private void DrawRightPanel()
         {
-            var rightPanelRect = EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true));
+            var rightPanelRect = EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
             EditorGUI.DrawRect(rightPanelRect, new Color(0.2f, 0.2f, 0.2f));
 
             if (m_selectedEntityId < 0)
             {
-                GUILayout.FlexibleSpace();
+                GUILayout.Space(20);
                 var style = new GUIStyle(EditorStyles.centeredGreyMiniLabel) { fontSize = 12 };
-                GUILayout.Label("Select an entity to view components", style);
-                GUILayout.FlexibleSpace();
+                EditorGUILayout.LabelField("Select an entity to view components", style);
             }
             else
             {
