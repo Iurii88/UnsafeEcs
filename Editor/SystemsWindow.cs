@@ -42,6 +42,9 @@ namespace UnsafeEcs.Editor
         private static readonly Color EnabledColor = new(0.4f, 0.8f, 0.4f);
         private static readonly Color DisabledColor = new(0.5f, 0.5f, 0.5f);
         private static readonly Color AccentColor = new(0.35f, 0.65f, 1f);
+        private static readonly Color LowPerformanceColor = new(0.4f, 0.7f, 0.4f);
+        private static readonly Color MediumPerformanceColor = new(0.9f, 0.7f, 0.3f);
+        private static readonly Color HighPerformanceColor = new(0.9f, 0.4f, 0.4f);
 
         [MenuItem("Window/UnsafeEcs/Systems %#s")]
         public static void ShowWindow()
@@ -297,6 +300,12 @@ namespace UnsafeEcs.Editor
 
             GUILayout.FlexibleSpace();
 
+            // Performance indicator for non-group systems
+            if (!isGroup)
+            {
+                DrawPerformanceBadge(system.AverageExecutionTimeMs);
+            }
+
             // Update mask badges
             DrawUpdateMaskBadges(system.UpdateMask);
 
@@ -319,6 +328,36 @@ namespace UnsafeEcs.Editor
                     DrawSystemNode(child, depth + 1);
                 }
             }
+        }
+
+        private void DrawPerformanceBadge(double timeMs)
+        {
+            Color badgeColor;
+            string timeText;
+
+            if (timeMs < 0.1)
+            {
+                badgeColor = LowPerformanceColor;
+                timeText = $"{timeMs:F2}ms";
+            }
+            else if (timeMs < 1.0)
+            {
+                badgeColor = MediumPerformanceColor;
+                timeText = $"{timeMs:F2}ms";
+            }
+            else
+            {
+                badgeColor = HighPerformanceColor;
+                timeText = $"{timeMs:F1}ms";
+            }
+
+            var style = new GUIStyle(EditorStyles.miniLabel)
+            {
+                alignment = TextAnchor.MiddleRight,
+                fontSize = 9,
+                normal = { textColor = badgeColor }
+            };
+            GUILayout.Label(timeText, style, GUILayout.Width(42));
         }
 
         private void DrawTriangle(Vector2 center, bool expanded, Color color)
@@ -444,6 +483,19 @@ namespace UnsafeEcs.Editor
                 DrawProperty("Category", isGroup ? "System Group" : "System");
             });
 
+            // Performance section (for non-group systems)
+            if (!isGroup)
+            {
+                DrawSection("PERFORMANCE", () =>
+                {
+                    var lastTime = m_selectedSystem.LastExecutionTimeMs;
+                    var avgTime = m_selectedSystem.AverageExecutionTimeMs;
+
+                    DrawPerformanceProperty("Last Time", $"{lastTime:F3} ms", GetPerformanceColor(lastTime));
+                    DrawPerformanceProperty("Avg Time", $"{avgTime:F3} ms", GetPerformanceColor(avgTime));
+                });
+            }
+
             // Update mask section
             DrawSection("UPDATE MASK", () =>
             {
@@ -526,6 +578,32 @@ namespace UnsafeEcs.Editor
             };
             GUILayout.Label(value, valueStyle);
             EditorGUILayout.EndHorizontal();
+        }
+
+        private void DrawPerformanceProperty(string label, string value, Color valueColor)
+        {
+            EditorGUILayout.BeginHorizontal();
+            var labelStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                normal = { textColor = DisabledColor }
+            };
+            GUILayout.Label(label + ":", labelStyle, GUILayout.Width(70));
+
+            var valueStyle = new GUIStyle(EditorStyles.miniLabel)
+            {
+                normal = { textColor = valueColor }
+            };
+            GUILayout.Label(value, valueStyle);
+            EditorGUILayout.EndHorizontal();
+        }
+
+        private Color GetPerformanceColor(double timeMs)
+        {
+            if (timeMs < 0.1)
+                return LowPerformanceColor;
+            if (timeMs < 1.0)
+                return MediumPerformanceColor;
+            return HighPerformanceColor;
         }
 
         private void DrawUpdateMaskProperty(string label, bool enabled)

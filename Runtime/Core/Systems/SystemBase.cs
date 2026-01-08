@@ -4,6 +4,9 @@ using UnsafeEcs.Core.DynamicBuffers;
 using UnsafeEcs.Core.Entities;
 using UnsafeEcs.Core.Utils;
 using UnsafeEcs.Core.Worlds;
+#if UNITY_EDITOR
+using System.Diagnostics;
+#endif
 
 namespace UnsafeEcs.Core.Systems
 {
@@ -25,6 +28,37 @@ namespace UnsafeEcs.Core.Systems
         public ref EntityManager entityManager => ref world.EntityManager;
 
         public virtual SystemUpdateMask UpdateMask { get; set; } = SystemUpdateMask.Update;
+
+#if UNITY_EDITOR
+        // Performance tracking (editor only)
+        public double LastExecutionTimeMs { get; private set; }
+        public double AverageExecutionTimeMs { get; private set; }
+
+        private readonly Stopwatch m_stopwatch = new();
+        private const int SmoothingFactor = 10;
+        private int m_sampleCount;
+
+        internal void BeginProfiling()
+        {
+            m_stopwatch.Restart();
+        }
+
+        internal void EndProfiling()
+        {
+            m_stopwatch.Stop();
+            LastExecutionTimeMs = m_stopwatch.Elapsed.TotalMilliseconds;
+
+            if (m_sampleCount < SmoothingFactor)
+            {
+                m_sampleCount++;
+                AverageExecutionTimeMs = ((AverageExecutionTimeMs * (m_sampleCount - 1)) + LastExecutionTimeMs) / m_sampleCount;
+            }
+            else
+            {
+                AverageExecutionTimeMs = ((AverageExecutionTimeMs * (SmoothingFactor - 1)) + LastExecutionTimeMs) / SmoothingFactor;
+            }
+        }
+#endif
 
         public virtual void OnAwake()
         {

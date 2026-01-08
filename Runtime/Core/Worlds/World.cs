@@ -57,7 +57,13 @@ namespace UnsafeEcs.Core.Worlds
                 if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
                 {
                     system.dependency = dependency;
+#if UNITY_EDITOR
+                    system.BeginProfiling();
+#endif
                     system.OnUpdate();
+#if UNITY_EDITOR
+                    system.EndProfiling();
+#endif
                     dependency = system.dependency;
                 }
 
@@ -72,7 +78,13 @@ namespace UnsafeEcs.Core.Worlds
                 if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
                 {
                     system.dependency = dependency;
+#if UNITY_EDITOR
+                    system.BeginProfiling();
+#endif
                     system.OnLateUpdate();
+#if UNITY_EDITOR
+                    system.EndProfiling();
+#endif
                     dependency = system.dependency;
                 }
 
@@ -89,7 +101,13 @@ namespace UnsafeEcs.Core.Worlds
                 if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
                 {
                     system.dependency = dependency;
+#if UNITY_EDITOR
+                    system.BeginProfiling();
+#endif
                     system.OnFixedUpdate();
+#if UNITY_EDITOR
+                    system.EndProfiling();
+#endif
                     dependency = system.dependency;
                 }
 

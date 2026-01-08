@@ -50,7 +50,13 @@ namespace UnsafeEcs.Core.Systems
                 if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
                 {
                     system.dependency = groupDependency;
+#if UNITY_EDITOR
+                    system.BeginProfiling();
+#endif
                     system.OnUpdate();
+#if UNITY_EDITOR
+                    system.EndProfiling();
+#endif
                     groupDependency = system.dependency;
                 }
             }
@@ -66,7 +72,13 @@ namespace UnsafeEcs.Core.Systems
                 if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
                 {
                     system.dependency = groupDependency;
+#if UNITY_EDITOR
+                    system.BeginProfiling();
+#endif
                     system.OnLateUpdate();
+#if UNITY_EDITOR
+                    system.EndProfiling();
+#endif
                     groupDependency = system.dependency;
                 }
             }
@@ -82,7 +94,13 @@ namespace UnsafeEcs.Core.Systems
                 if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
                 {
                     system.dependency = groupDependency;
+#if UNITY_EDITOR
+                    system.BeginProfiling();
+#endif
                     system.OnFixedUpdate();
+#if UNITY_EDITOR
+                    system.EndProfiling();
+#endif
                     groupDependency = system.dependency;
                 }
             }
