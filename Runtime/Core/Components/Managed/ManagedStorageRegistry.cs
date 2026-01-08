@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace UnsafeEcs.Core.Components.Managed
 {
-    internal static class ManagedStorageRegistry
+    public static class ManagedStorageRegistry
     {
         private static int m_nextId = 1;
         private static readonly Dictionary<int, ManagedStorage> Storages = new();
