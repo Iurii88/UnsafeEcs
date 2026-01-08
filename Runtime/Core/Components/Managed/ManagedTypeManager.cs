@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using Unity.Burst;
@@ -8,6 +10,8 @@ namespace UnsafeEcs.Core.Components.Managed
 {
     public static class ManagedTypeManager
     {
+        // Cache for runtime type lookups (used by editor)
+        private static readonly Dictionary<Type, int> s_runtimeTypeToIndex = new();
         public static readonly SharedStatic<int> TypeCount = SharedStatic<int>.GetOrCreate<TypeCountKey>();
 
         public static readonly SharedStatic<UnsafeParallelHashMap<long, int>> TypeToIndex =
@@ -74,6 +78,28 @@ namespace UnsafeEcs.Core.Components.Managed
             TypeOrder.Data.Clear();
             TypeCount.Data = 0;
             CacheVersion.Data++;
+            s_runtimeTypeToIndex.Clear();
+        }
+
+        /// <summary>
+        /// Gets the type index for a runtime Type. Used by editor tools.
+        /// Caches results for performance.
+        /// </summary>
+        public static int GetTypeIndexFromType(Type type)
+        {
+            if (s_runtimeTypeToIndex.TryGetValue(type, out var cachedIndex))
+                return cachedIndex;
+
+            // Use reflection to call GetTypeIndex<T>
+            var method = typeof(ManagedTypeManager).GetMethod(nameof(GetTypeIndex));
+            if (method == null)
+                return -1;
+
+            var genericMethod = method.MakeGenericMethod(type);
+            var index = (int)genericMethod.Invoke(null, null);
+
+            s_runtimeTypeToIndex[type] = index;
+            return index;
         }
 
         // Type cache static storage

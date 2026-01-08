@@ -1,14 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Text;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 using UnityEngine;
 using UnsafeEcs.Core.Components;
 using UnsafeEcs.Core.Components.Managed;
 using UnsafeEcs.Core.DynamicBuffers;
-using UnsafeEcs.Core.Entities;
 using UnsafeEcs.Core.Worlds;
 
 namespace UnsafeEcs.Editor
@@ -136,28 +134,17 @@ namespace UnsafeEcs.Editor
                 ObjectFields = new List<FieldData>()
             };
 
-            // Try to resolve the managed object
+            // Try to resolve the managed object using the World's managed storage
             try
             {
-                var storage = ManagedStorageRegistry.Get(storageId);
+                var storage = m_world.managedStorage;
                 if (storage != null)
                 {
-                    // Use reflection to call Get<T>
-                    var getMethod = typeof(ManagedStorage).GetMethod("Get");
-                    if (getMethod != null)
+                    // Get the type index for the inner type
+                    var typeId = ManagedTypeManager.GetTypeIndexFromType(innerType);
+                    if (typeId >= 0)
                     {
-                        var genericGet = getMethod.MakeGenericMethod(innerType);
-
-                        // Create a ManagedRef<T> instance to pass
-                        var managedRefInstance = Activator.CreateInstance(type);
-                        objectIdField.SetValue(managedRefInstance, objectId);
-                        versionField.SetValue(managedRefInstance, version);
-                        storageIdField.SetValue(managedRefInstance, storageId);
-
-                        // Call Get with ref parameter
-                        var parameters = new[] { managedRefInstance };
-                        var resolvedObj = genericGet.Invoke(storage, parameters);
-
+                        var resolvedObj = storage.GetByTypeId(typeId, objectId, version);
                         if (resolvedObj != null)
                         {
                             refData.ResolvedObject = resolvedObj;

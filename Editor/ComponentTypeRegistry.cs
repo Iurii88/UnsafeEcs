@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using Unity.Burst;
-using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Components;
 using UnsafeEcs.Core.Components.Managed;
 
@@ -13,6 +12,7 @@ namespace UnsafeEcs.Editor
         private static readonly Dictionary<int, Type> s_indexToType = new();
         private static readonly Dictionary<long, Type> s_hashToType = new();
         private static readonly Dictionary<Type, Type> s_managedRefToInnerType = new();
+        private static readonly List<Type> s_allManagedTypes = new(); // All class types that could be used with ManagedRef<T>
         private static bool s_initialized;
 
         public static void Initialize()
@@ -29,6 +29,7 @@ namespace UnsafeEcs.Editor
             s_indexToType.Clear();
             s_hashToType.Clear();
             s_managedRefToInnerType.Clear();
+            s_allManagedTypes.Clear();
             ScanComponentTypes();
         }
 
@@ -47,6 +48,12 @@ namespace UnsafeEcs.Editor
                         if (type.IsAbstract || type.IsInterface || type.IsGenericTypeDefinition)
                             continue;
 
+                        // Collect class types for potential ManagedRef<T> lookups
+                        if (type.IsClass && !type.IsAbstract)
+                        {
+                            s_allManagedTypes.Add(type);
+                        }
+
                         if (!type.IsValueType)
                             continue;
 
@@ -56,7 +63,8 @@ namespace UnsafeEcs.Editor
                         if (!isComponent && !isBuffer)
                             continue;
 
-                        var hash = BurstRuntime.GetHashCode64(type);
+                        // Use the generic hash method for consistency with TypeManager
+                        var hash = GetGenericTypeHash(type);
                         s_hashToType[hash] = type;
 
                         // Check if this is a ManagedRef<T>
@@ -88,9 +96,76 @@ namespace UnsafeEcs.Editor
                     s_indexToType[index] = type;
                     return type;
                 }
+
+                // If not found, try to find ManagedRef<T> types by iterating all known types
+                // and checking their generic hash
+                type = TryFindManagedRefType(hash);
+                if (type != null)
+                {
+                    s_indexToType[index] = type;
+                    s_hashToType[hash] = type;
+                    return type;
+                }
             }
 
             return null;
+        }
+
+        private static Type TryFindManagedRefType(long targetHash)
+        {
+            var managedRefGenericType = typeof(ManagedRef<>);
+
+            foreach (var managedType in s_allManagedTypes)
+            {
+                try
+                {
+                    var managedRefType = managedRefGenericType.MakeGenericType(managedType);
+
+                    // Use reflection to call the generic BurstRuntime.GetHashCode64<T>()
+                    // since BurstRuntime.GetHashCode64(Type) may produce different results
+                    var hash = GetGenericTypeHash(managedRefType);
+                    if (hash == targetHash)
+                    {
+                        s_managedRefToInnerType[managedRefType] = managedType;
+                        return managedRefType;
+                    }
+                }
+                catch
+                {
+                    // Some types may not be valid for ManagedRef<T>
+                }
+            }
+
+            return null;
+        }
+
+        private static long GetGenericTypeHash(Type type)
+        {
+            // Try using the generic method via reflection to get the same hash as Burst
+            // We need to find the generic method GetHashCode64<T>() specifically
+            foreach (var method in typeof(BurstRuntime).GetMethods(BindingFlags.Public | BindingFlags.Static))
+            {
+                if (method.Name != nameof(BurstRuntime.GetHashCode64))
+                    continue;
+
+                if (!method.IsGenericMethodDefinition)
+                    continue;
+
+                if (method.GetParameters().Length != 0)
+                    continue;
+
+                try
+                {
+                    var genericMethod = method.MakeGenericMethod(type);
+                    return (long)genericMethod.Invoke(null, null);
+                }
+                catch
+                {
+                    // Fall back to type-based hash
+                }
+            }
+
+            return BurstRuntime.GetHashCode64(type);
         }
 
         public static string GetTypeNameByIndex(int index)

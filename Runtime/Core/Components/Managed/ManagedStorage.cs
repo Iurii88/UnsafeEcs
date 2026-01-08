@@ -38,6 +38,23 @@ namespace UnsafeEcs.Core.Components.Managed
             return pool.Get(refComp.objectId, refComp.version);
         }
 
+        /// <summary>
+        /// Gets an object by type ID, object ID, and version. Used by editor tools.
+        /// </summary>
+        public object GetByTypeId(int typeId, int objectId, int version)
+        {
+            if (!poolsByTypeId.TryGetValue(typeId, out var pool))
+                return null;
+
+            // Use reflection to call Get on the pool
+            var poolType = pool.GetType();
+            var getMethod = poolType.GetMethod("Get");
+            if (getMethod == null)
+                return null;
+
+            return getMethod.Invoke(pool, new object[] { objectId, version });
+        }
+
         public void Remove<T>(ManagedRef<T> refComp) where T : class
         {
             var typeId = ManagedRef<T>.GetTypeId();
