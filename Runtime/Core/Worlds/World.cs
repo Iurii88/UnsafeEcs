@@ -21,6 +21,7 @@ namespace UnsafeEcs.Core.Worlds
         public ReferenceWrapper<EntityManager> entityManagerWrapper;
 
         public readonly ManagedStorage managedStorage = new();
+        public readonly WorldData data = new();
         private EntityManager m_entityManager;
 
         public World()
@@ -166,5 +167,17 @@ namespace UnsafeEcs.Core.Worlds
         {
             EntityManager.DestroyEntity(entity);
         }
+
+        #region WorldData convenience methods
+        
+        public void SetData<T>(T value) => data.SetData(value);
+        public T GetData<T>() => data.GetData<T>();
+        public bool TryGetData<T>(out T value) => data.TryGetData(out value);
+        public bool HasData<T>() => data.HasData<T>();
+        public bool RemoveData<T>() => data.RemoveData<T>();
+        public T GetOrCreateData<T>(Func<T> factory) => data.GetOrCreateData(factory);
+        public T GetOrCreateData<T>() where T : new() => data.GetOrCreateData<T>();
+
+        #endregion
     }
 }
