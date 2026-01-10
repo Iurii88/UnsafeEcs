@@ -16,6 +16,7 @@ namespace UnsafeEcs.Core.Systems
             {
                 system.world = world;
                 world.systemByType[system.GetType()] = system;
+                world.onSystemAdded?.Invoke(system);
                 system.OnAwake();
             }
         }
@@ -36,6 +37,7 @@ namespace UnsafeEcs.Core.Systems
                 {
                     system.world = world;
                     world.systemByType[system.GetType()] = system;
+                    world.onSystemAdded?.Invoke(system);
                 }
 
                 system.OnAwake();

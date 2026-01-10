@@ -12,6 +12,8 @@ namespace UnsafeEcs.Core.Worlds
 {
     public class World : IDisposable
     {
+        public Action<SystemBase> onSystemAdded;
+
         public readonly List<SystemBase> rootSystems = new();
         public readonly Dictionary<Type, SystemBase> systemByType = new();
         public float deltaTime;
@@ -120,6 +122,7 @@ namespace UnsafeEcs.Core.Worlds
             rootSystems.Add(system);
             systemByType[system.GetType()] = system;
             system.world = this;
+            onSystemAdded?.Invoke(system);
             system.OnAwake();
         }
 
