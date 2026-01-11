@@ -268,5 +268,93 @@ namespace UnsafeEcs.Core.Entities
                 managerPtr->ExecuteQueryAndUpdateCache(ref query, cacheKeyValue, ref filter);
             }
         }
+
+        public JobHandle QueryEntities(ref EntityQuery query, ref UnsafeList<Entity> resultEntities, JobHandle inputDependency = default)
+        {
+            var job = new QueryToListJob
+            {
+                managerPtr = m_managerPtr,
+                queryPtr = (EntityQuery*)UnsafeUtility.AddressOf(ref query),
+                resultEntitiesPtr = (UnsafeList<Entity>*)UnsafeUtility.AddressOf(ref resultEntities)
+            };
+            return job.Schedule(inputDependency);
+        }
+
+        public JobHandle QueryEntities<TFilter>(ref EntityQuery query, ref UnsafeList<Entity> resultEntities, ref TFilter filter, JobHandle inputDependency = default)
+            where TFilter : unmanaged, IQueryFilter
+        {
+            var job = new QueryToListJob<TFilter>
+            {
+                managerPtr = m_managerPtr,
+                queryPtr = (EntityQuery*)UnsafeUtility.AddressOf(ref query),
+                resultEntitiesPtr = (UnsafeList<Entity>*)UnsafeUtility.AddressOf(ref resultEntities),
+                filterPtr = (TFilter*)UnsafeUtility.AddressOf(ref filter)
+            };
+            return job.Schedule(inputDependency);
+        }
+
+        [BurstCompile]
+        private struct QueryToListJob : IJob
+        {
+            [NativeDisableUnsafePtrRestriction] public EntityQuery* queryPtr;
+            [NativeDisableUnsafePtrRestriction] public EntityManager* managerPtr;
+            [NativeDisableUnsafePtrRestriction] public UnsafeList<Entity>* resultEntitiesPtr;
+
+            public void Execute()
+            {
+                ref var query = ref UnsafeUtility.AsRef<EntityQuery>(queryPtr);
+                ref var resultEntities = ref UnsafeUtility.AsRef<UnsafeList<Entity>>(resultEntitiesPtr);
+                ref var manager = ref UnsafeUtility.AsRef<EntityManager>(managerPtr);
+
+                resultEntities.Clear();
+
+                for (var i = 0; i < manager.entities.m_length; i++)
+                {
+                    var entity = manager.entities.Ptr[i];
+                    if (entity.id >= manager.deadEntities.m_length || manager.deadEntities.Ptr[entity.id])
+                        continue;
+
+                    ref var archetype = ref manager.entityArchetypes.Ptr[entity.id];
+                    if (query.MatchesQuery(in archetype.componentBits))
+                    {
+                        entity.managerPtr = managerPtr;
+                        resultEntities.Add(entity);
+                    }
+                }
+            }
+        }
+
+        [BurstCompile]
+        private struct QueryToListJob<TFilter> : IJob where TFilter : unmanaged, IQueryFilter
+        {
+            [NativeDisableUnsafePtrRestriction] public EntityQuery* queryPtr;
+            [NativeDisableUnsafePtrRestriction] public EntityManager* managerPtr;
+            [NativeDisableUnsafePtrRestriction] public UnsafeList<Entity>* resultEntitiesPtr;
+            [NativeDisableUnsafePtrRestriction] public TFilter* filterPtr;
+
+            public void Execute()
+            {
+                ref var query = ref UnsafeUtility.AsRef<EntityQuery>(queryPtr);
+                ref var resultEntities = ref UnsafeUtility.AsRef<UnsafeList<Entity>>(resultEntitiesPtr);
+                ref var manager = ref UnsafeUtility.AsRef<EntityManager>(managerPtr);
+                ref var filter = ref UnsafeUtility.AsRef<TFilter>(filterPtr);
+
+                resultEntities.Clear();
+
+                for (var i = 0; i < manager.entities.m_length; i++)
+                {
+                    var entity = manager.entities.Ptr[i];
+                    if (entity.id >= manager.deadEntities.m_length || manager.deadEntities.Ptr[entity.id])
+                        continue;
+
+                    ref var archetype = ref manager.entityArchetypes.Ptr[entity.id];
+                    if (query.MatchesQuery(in archetype.componentBits) && filter.Validate(entity))
+                    {
+                        entity.managerPtr = managerPtr;
+                        resultEntities.Add(entity);
+                    }
+                }
+            }
+        }
     }
 }

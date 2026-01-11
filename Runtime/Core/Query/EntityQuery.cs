@@ -331,6 +331,25 @@ namespace UnsafeEcs.Core.Entities
             return m_manager->QueryEntitiesWithoutJob<TFilter>(ref this, ref filter);
         }
 
+        /// <summary>
+        /// Schedules a job to fill the provided list with entities matching the query.
+        /// The list will be cleared and populated when the returned JobHandle completes.
+        /// </summary>
+        public Unity.Jobs.JobHandle Fetch(ref UnsafeList<Entity> entities, Unity.Jobs.JobHandle inputDependency = default)
+        {
+            return m_manager->QueryEntities(ref this, ref entities, inputDependency);
+        }
+
+        /// <summary>
+        /// Schedules a job to fill the provided list with entities matching the query and filter.
+        /// The list will be cleared and populated when the returned JobHandle completes.
+        /// </summary>
+        public Unity.Jobs.JobHandle Fetch<TFilter>(ref UnsafeList<Entity> entities, TFilter filter, Unity.Jobs.JobHandle inputDependency = default)
+            where TFilter : unmanaged, IQueryFilter
+        {
+            return m_manager->QueryEntities<TFilter>(ref this, ref entities, ref filter, inputDependency);
+        }
+
         public override bool Equals(object obj)
         {
             return obj is EntityQuery other && Equals(other);
