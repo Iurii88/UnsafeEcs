@@ -12,18 +12,17 @@ namespace UnsafeEcs.Core.Entities
         private struct QueryCacheEntry : IDisposable
         {
             public UnsafeList<Entity> entities;
-            public UnsafeHashMap<int, uint> componentVersions;
+            public ulong versionChecksum;
 
             public void Dispose()
             {
                 entities.Dispose();
-                componentVersions.Dispose();
             }
 
             public void Clear()
             {
                 entities.Clear();
-                componentVersions.Clear();
+                versionChecksum = 0;
             }
         }
 
@@ -35,26 +34,71 @@ namespace UnsafeEcs.Core.Entities
             if (!m_queryCache.TryGetValue(cacheKey, out cacheEntry))
                 return false;
 
-            foreach (var typeIndex in query.componentBits)
+            var currentChecksum = ComputeVersionChecksum(ref query);
+            return currentChecksum == cacheEntry.versionChecksum;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ulong ComputeVersionChecksum(ref EntityQuery query)
+        {
+            var bits = query.withMask | query.withoutMask | query.withAnyMask;
+            ulong checksum = 0;
+            var chunksLength = chunks.m_length;
+            var chunksPtr = chunks.Ptr;
+
+            // Process part0 (bits 0-63)
+            var partBits = bits.part0;
+            while (partBits != 0)
             {
-                if (chunks.m_length <= typeIndex)
-                    break;
-
-                ref var chunk = ref chunks.Ptr[typeIndex];
-                var version = chunk.GetVersion();
-
-                if (!cacheEntry.componentVersions.TryGetValue(typeIndex, out var cachedVersion))
+                var bitIndex = Unity.Mathematics.math.tzcnt(partBits);
+                if (bitIndex < chunksLength)
                 {
-                    return false;
+                    var version = chunksPtr[bitIndex].GetVersion();
+                    checksum ^= ((ulong)version << 32) | ((ulong)bitIndex * 2654435761UL);
                 }
-
-                if (version != cachedVersion)
-                {
-                    return false;
-                }
+                partBits &= partBits - 1;
             }
 
-            return true;
+            // Process part1 (bits 64-127)
+            partBits = bits.part1;
+            while (partBits != 0)
+            {
+                var bitIndex = Unity.Mathematics.math.tzcnt(partBits) + 64;
+                if (bitIndex < chunksLength)
+                {
+                    var version = chunksPtr[bitIndex].GetVersion();
+                    checksum ^= ((ulong)version << 32) | ((ulong)bitIndex * 2654435761UL);
+                }
+                partBits &= partBits - 1;
+            }
+
+            // Process part2 (bits 128-191)
+            partBits = bits.part2;
+            while (partBits != 0)
+            {
+                var bitIndex = Unity.Mathematics.math.tzcnt(partBits) + 128;
+                if (bitIndex < chunksLength)
+                {
+                    var version = chunksPtr[bitIndex].GetVersion();
+                    checksum ^= ((ulong)version << 32) | ((ulong)bitIndex * 2654435761UL);
+                }
+                partBits &= partBits - 1;
+            }
+
+            // Process part3 (bits 192-255)
+            partBits = bits.part3;
+            while (partBits != 0)
+            {
+                var bitIndex = Unity.Mathematics.math.tzcnt(partBits) + 192;
+                if (bitIndex < chunksLength)
+                {
+                    var version = chunksPtr[bitIndex].GetVersion();
+                    checksum ^= ((ulong)version << 32) | ((ulong)bitIndex * 2654435761UL);
+                }
+                partBits &= partBits - 1;
+            }
+
+            return checksum;
         }
 
         public UnsafeList<Entity> QueryEntities(ref EntityQuery query)
@@ -133,21 +177,17 @@ namespace UnsafeEcs.Core.Entities
         private void ExecuteQueryAndUpdateCache(ref EntityQuery query, ulong cacheKey)
         {
             UnsafeList<Entity> resultEntities;
-            UnsafeHashMap<int, uint> componentVersions;
 
             var reuseMemory = m_queryCache.TryGetValue(cacheKey, out var existingEntry);
             if (reuseMemory)
             {
                 resultEntities = existingEntry.entities;
-                componentVersions = existingEntry.componentVersions;
                 resultEntities.Clear();
-                componentVersions.Clear();
             }
             else
             {
                 var initialCapacity = Math.Min(16, entities.m_length);
                 resultEntities = new UnsafeList<Entity>(initialCapacity, Allocator.Persistent);
-                componentVersions = new UnsafeHashMap<int, uint>(16, Allocator.Persistent);
             }
 
             for (var i = 0; i < entities.m_length; i++)
@@ -164,19 +204,10 @@ namespace UnsafeEcs.Core.Entities
                 }
             }
 
-            foreach (var typeIndex in query.componentBits)
-            {
-                if (chunks.m_length > typeIndex)
-                {
-                    ref var chunk = ref chunks.Ptr[typeIndex];
-                    componentVersions[typeIndex] = chunk.GetVersion();
-                }
-            }
-
             var cacheEntry = new QueryCacheEntry
             {
                 entities = resultEntities,
-                componentVersions = componentVersions
+                versionChecksum = ComputeVersionChecksum(ref query)
             };
 
             m_queryCache[cacheKey] = cacheEntry;
@@ -185,21 +216,17 @@ namespace UnsafeEcs.Core.Entities
         private void ExecuteQueryAndUpdateCache<TFilter>(ref EntityQuery query, ulong cacheKey, ref TFilter filter) where TFilter : unmanaged, IQueryFilter
         {
             UnsafeList<Entity> resultEntities;
-            UnsafeHashMap<int, uint> componentVersions;
 
             var reuseMemory = m_queryCache.TryGetValue(cacheKey, out var existingEntry);
             if (reuseMemory)
             {
                 resultEntities = existingEntry.entities;
-                componentVersions = existingEntry.componentVersions;
                 resultEntities.Clear();
-                componentVersions.Clear();
             }
             else
             {
                 var initialCapacity = Math.Min(16, entities.m_length);
                 resultEntities = new UnsafeList<Entity>(initialCapacity, Allocator.Persistent);
-                componentVersions = new UnsafeHashMap<int, uint>(16, Allocator.Persistent);
             }
 
             for (var i = 0; i < entities.m_length; i++)
@@ -216,19 +243,10 @@ namespace UnsafeEcs.Core.Entities
                 }
             }
 
-            foreach (var typeIndex in query.componentBits)
-            {
-                if (chunks.m_length > typeIndex)
-                {
-                    ref var chunk = ref chunks.Ptr[typeIndex];
-                    componentVersions[typeIndex] = chunk.GetVersion();
-                }
-            }
-
             var cacheEntry = new QueryCacheEntry
             {
                 entities = resultEntities,
-                componentVersions = componentVersions
+                versionChecksum = ComputeVersionChecksum(ref query)
             };
 
             m_queryCache[cacheKey] = cacheEntry;
