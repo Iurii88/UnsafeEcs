@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Components;
@@ -25,14 +26,15 @@ namespace UnsafeEcs.Core.Entities
             existingChunk->Add(entity.id, UnsafeUtility.AddressOf(ref component));
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureComponentChunkExists(int typeIndex)
         {
-            if (typeIndex >= chunks.Length)
+            if (typeIndex >= chunks.m_length)
                 chunks.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
 
-            if (chunks.Ptr[typeIndex].IsValid)
+            if (chunks.Ptr[typeIndex].chunkPtr != null)
                 return;
-            
+
             var size = TypeManager.GetTypeSizeByIndex(typeIndex);
             var stackChunk = new ComponentChunk(size, InitialEntityCapacity, typeIndex, m_managerPtr);
             var chunk = (ComponentChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<ComponentChunk>(), UnsafeUtility.AlignOf<ComponentChunk>(), Allocator.Persistent);
@@ -191,18 +193,22 @@ namespace UnsafeEcs.Core.Entities
             UnsafeUtility.CopyStructureToPtr(ref component, componentPtr);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ComponentArray<T> GetComponentArray<T>() where T : unmanaged, IComponent
         {
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
-            EnsureComponentChunkExists(typeIndex);
-            if (typeIndex < chunks.Length)
+
+            // Fast path: chunk already exists (common case in hot loops)
+            if (typeIndex < chunks.m_length)
             {
-                var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
-                if (chunk != null)
-                    return new ComponentArray<T>(chunk);
+                var chunkUnion = chunks.Ptr + typeIndex;
+                if (chunkUnion->chunkPtr != null && !chunkUnion->isBuffer)
+                    return new ComponentArray<T>((ComponentChunk*)chunkUnion->chunkPtr);
             }
 
-            return default;
+            // Slow path: ensure chunk exists and return
+            EnsureComponentChunkExists(typeIndex);
+            return new ComponentArray<T>((ComponentChunk*)chunks.Ptr[typeIndex].chunkPtr);
         }
 
         private void DestroyEntityComponents(Entity entity)

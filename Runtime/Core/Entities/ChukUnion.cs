@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Components;
@@ -13,11 +14,13 @@ namespace UnsafeEcs.Core.Entities
         public bool isBuffer; // Type discriminator flag
 
         // Helper methods to safely access the appropriate type
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ComponentChunk* AsComponentChunk()
         {
             return isBuffer ? null : (ComponentChunk*)chunkPtr;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public BufferChunk* AsBufferChunk()
         {
             return isBuffer ? (BufferChunk*)chunkPtr : null;
