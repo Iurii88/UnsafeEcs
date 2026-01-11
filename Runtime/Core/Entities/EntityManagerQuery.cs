@@ -356,5 +356,101 @@ namespace UnsafeEcs.Core.Entities
                 }
             }
         }
+
+        public JobHandle QueryEntities(ref EntityQuery query, NativeArray<Entity> resultEntities, NativeReference<int> resultCount, JobHandle inputDependency = default)
+        {
+            var job = new QueryToArrayJob
+            {
+                managerPtr = m_managerPtr,
+                queryPtr = (EntityQuery*)UnsafeUtility.AddressOf(ref query),
+                resultEntities = resultEntities,
+                resultCount = resultCount
+            };
+            return job.Schedule(inputDependency);
+        }
+
+        public JobHandle QueryEntities<TFilter>(ref EntityQuery query, NativeArray<Entity> resultEntities, NativeReference<int> resultCount, ref TFilter filter, JobHandle inputDependency = default)
+            where TFilter : unmanaged, IQueryFilter
+        {
+            var job = new QueryToArrayJob<TFilter>
+            {
+                managerPtr = m_managerPtr,
+                queryPtr = (EntityQuery*)UnsafeUtility.AddressOf(ref query),
+                resultEntities = resultEntities,
+                resultCount = resultCount,
+                filterPtr = (TFilter*)UnsafeUtility.AddressOf(ref filter)
+            };
+            return job.Schedule(inputDependency);
+        }
+
+        [BurstCompile]
+        private struct QueryToArrayJob : IJob
+        {
+            [NativeDisableUnsafePtrRestriction] public EntityQuery* queryPtr;
+            [NativeDisableUnsafePtrRestriction] public EntityManager* managerPtr;
+            public NativeArray<Entity> resultEntities;
+            public NativeReference<int> resultCount;
+
+            public void Execute()
+            {
+                ref var query = ref UnsafeUtility.AsRef<EntityQuery>(queryPtr);
+                ref var manager = ref UnsafeUtility.AsRef<EntityManager>(managerPtr);
+
+                var count = 0;
+                var capacity = resultEntities.Length;
+
+                for (var i = 0; i < manager.entities.m_length && count < capacity; i++)
+                {
+                    var entity = manager.entities.Ptr[i];
+                    if (entity.id >= manager.deadEntities.m_length || manager.deadEntities.Ptr[entity.id])
+                        continue;
+
+                    ref var archetype = ref manager.entityArchetypes.Ptr[entity.id];
+                    if (query.MatchesQuery(in archetype.componentBits))
+                    {
+                        entity.managerPtr = managerPtr;
+                        resultEntities[count++] = entity;
+                    }
+                }
+
+                resultCount.Value = count;
+            }
+        }
+
+        [BurstCompile]
+        private struct QueryToArrayJob<TFilter> : IJob where TFilter : unmanaged, IQueryFilter
+        {
+            [NativeDisableUnsafePtrRestriction] public EntityQuery* queryPtr;
+            [NativeDisableUnsafePtrRestriction] public EntityManager* managerPtr;
+            public NativeArray<Entity> resultEntities;
+            public NativeReference<int> resultCount;
+            [NativeDisableUnsafePtrRestriction] public TFilter* filterPtr;
+
+            public void Execute()
+            {
+                ref var query = ref UnsafeUtility.AsRef<EntityQuery>(queryPtr);
+                ref var manager = ref UnsafeUtility.AsRef<EntityManager>(managerPtr);
+                ref var filter = ref UnsafeUtility.AsRef<TFilter>(filterPtr);
+
+                var count = 0;
+                var capacity = resultEntities.Length;
+
+                for (var i = 0; i < manager.entities.m_length && count < capacity; i++)
+                {
+                    var entity = manager.entities.Ptr[i];
+                    if (entity.id >= manager.deadEntities.m_length || manager.deadEntities.Ptr[entity.id])
+                        continue;
+
+                    ref var archetype = ref manager.entityArchetypes.Ptr[entity.id];
+                    if (query.MatchesQuery(in archetype.componentBits) && filter.Validate(entity))
+                    {
+                        entity.managerPtr = managerPtr;
+                        resultEntities[count++] = entity;
+                    }
+                }
+
+                resultCount.Value = count;
+            }
+        }
     }
 }

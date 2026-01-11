@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Components;
 
@@ -348,6 +349,25 @@ namespace UnsafeEcs.Core.Entities
             where TFilter : unmanaged, IQueryFilter
         {
             return m_manager->QueryEntities<TFilter>(ref this, ref entities, ref filter, inputDependency);
+        }
+
+        /// <summary>
+        /// Schedules a job to fill the provided NativeArray with entities matching the query.
+        /// The actual count of entities written is stored in resultCount when the returned JobHandle completes.
+        /// </summary>
+        public Unity.Jobs.JobHandle Fetch(NativeArray<Entity> entities, NativeReference<int> resultCount, Unity.Jobs.JobHandle inputDependency = default)
+        {
+            return m_manager->QueryEntities(ref this, entities, resultCount, inputDependency);
+        }
+
+        /// <summary>
+        /// Schedules a job to fill the provided NativeArray with entities matching the query and filter.
+        /// The actual count of entities written is stored in resultCount when the returned JobHandle completes.
+        /// </summary>
+        public Unity.Jobs.JobHandle Fetch<TFilter>(NativeArray<Entity> entities, NativeReference<int> resultCount, TFilter filter, Unity.Jobs.JobHandle inputDependency = default)
+            where TFilter : unmanaged, IQueryFilter
+        {
+            return m_manager->QueryEntities<TFilter>(ref this, entities, resultCount, ref filter, inputDependency);
         }
 
         public override bool Equals(object obj)
