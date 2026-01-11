@@ -38,12 +38,12 @@ namespace UnsafeEcs.Core.Systems
         private const int SmoothingFactor = 10;
         private int m_sampleCount;
 
-        internal void BeginProfiling()
+        public void BeginProfiling()
         {
             m_stopwatch.Restart();
         }
 
-        internal void EndProfiling()
+        public void EndProfiling()
         {
             m_stopwatch.Stop();
             LastExecutionTimeMs = m_stopwatch.Elapsed.TotalMilliseconds;
