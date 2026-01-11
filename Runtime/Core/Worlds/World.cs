@@ -50,11 +50,11 @@ namespace UnsafeEcs.Core.Worlds
             m_entityManager.Dispose();
         }
 
-        public void Update(float dt)
+        public JobHandle Update(float dt, JobHandle inputDependency = default)
         {
             deltaTime = dt;
             elapsedDeltaTime += dt;
-            var dependency = default(JobHandle);
+            var dependency = inputDependency;
 
             foreach (var system in rootSystems)
                 if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
@@ -70,12 +70,12 @@ namespace UnsafeEcs.Core.Worlds
                     dependency = system.dependency;
                 }
 
-            dependency.Complete();
+            return dependency;
         }
 
-        public void LateUpdate(float dt)
+        public JobHandle LateUpdate(float dt, JobHandle inputDependency = default)
         {
-            var dependency = default(JobHandle);
+            var dependency = inputDependency;
 
             foreach (var system in rootSystems)
                 if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
@@ -91,14 +91,14 @@ namespace UnsafeEcs.Core.Worlds
                     dependency = system.dependency;
                 }
 
-            dependency.Complete();
+            return dependency;
         }
 
-        public void FixedUpdate(float dt)
+        public JobHandle FixedUpdate(float dt, JobHandle inputDependency = default)
         {
             fixedDeltaTime = dt;
             elapsedFixedDeltaTime += dt;
-            var dependency = default(JobHandle);
+            var dependency = inputDependency;
 
             foreach (var system in rootSystems)
                 if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
@@ -114,7 +114,7 @@ namespace UnsafeEcs.Core.Worlds
                     dependency = system.dependency;
                 }
 
-            dependency.Complete();
+            return dependency;
         }
 
         public void AddRootSystem(SystemBase system)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.Jobs;
 using UnityEngine;
 using UnsafeEcs.Core.Components;
 using UnsafeEcs.Core.Components.Managed;
@@ -123,20 +124,40 @@ namespace UnsafeEcs.Core.Worlds
 
         public static void Update(float deltaTime)
         {
+            // Schedule all worlds (jobs run in parallel across worker threads)
+            var combinedHandle = default(JobHandle);
             foreach (var world in Worlds)
-                world.Update(deltaTime);
+            {
+                var worldHandle = world.Update(deltaTime);
+                combinedHandle = JobHandle.CombineDependencies(combinedHandle, worldHandle);
+            }
+
+            // Wait for all worlds to complete
+            combinedHandle.Complete();
         }
 
         public static void LateUpdate(float deltaTime)
         {
+            var combinedHandle = default(JobHandle);
             foreach (var world in Worlds)
-                world.LateUpdate(deltaTime);
+            {
+                var worldHandle = world.LateUpdate(deltaTime);
+                combinedHandle = JobHandle.CombineDependencies(combinedHandle, worldHandle);
+            }
+
+            combinedHandle.Complete();
         }
 
         public static void FixedUpdate(float deltaTime)
         {
+            var combinedHandle = default(JobHandle);
             foreach (var world in Worlds)
-                world.FixedUpdate(deltaTime);
+            {
+                var worldHandle = world.FixedUpdate(deltaTime);
+                combinedHandle = JobHandle.CombineDependencies(combinedHandle, worldHandle);
+            }
+
+            combinedHandle.Complete();
         }
     }
 
