@@ -203,7 +203,7 @@ namespace UnsafeEcs.Core.Entities
         /// <summary>
         /// Gets a ComponentArray using a pre-cached type index for maximum performance.
         /// Use this when calling GetComponentArray repeatedly with the same type.
-        /// Cache the typeIndex once using TypeManager.GetComponentTypeIndex&lt;T&gt;().
+        /// Cache the typeIndex once using TypeManager.GetComponentTypeIndex().
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ComponentArray<T> GetComponentArray<T>(int typeIndex) where T : unmanaged, IComponent

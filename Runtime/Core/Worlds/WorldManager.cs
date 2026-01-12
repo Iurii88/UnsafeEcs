@@ -89,16 +89,16 @@ namespace UnsafeEcs.Core.Worlds
 
         public static void Destroy()
         {
-            if (m_worldManagerGo != null)
-            {
-                // Use DestroyImmediate in edit mode, Destroy in play mode
-                if (Application.isPlaying)
-                    Object.Destroy(m_worldManagerGo);
-                else
-                    Object.DestroyImmediate(m_worldManagerGo);
+            if (m_worldManagerGo == null)
+                return;
+            
+            // Use DestroyImmediate in edit mode, Destroy in play mode
+            if (Application.isPlaying)
+                Object.Destroy(m_worldManagerGo);
+            else
+                Object.DestroyImmediate(m_worldManagerGo);
 
-                m_worldManagerGo = null;
-            }
+            m_worldManagerGo = null;
         }
 
         public static void OnDestroy()
@@ -126,8 +126,9 @@ namespace UnsafeEcs.Core.Worlds
         {
             // Schedule all worlds (jobs run in parallel across worker threads)
             var combinedHandle = default(JobHandle);
-            foreach (var world in Worlds)
+            for (var index = 0; index < Worlds.Count; index++)
             {
+                var world = Worlds[index];
                 var worldHandle = world.Update(deltaTime);
                 combinedHandle = JobHandle.CombineDependencies(combinedHandle, worldHandle);
             }
@@ -139,8 +140,9 @@ namespace UnsafeEcs.Core.Worlds
         public static void LateUpdate(float deltaTime)
         {
             var combinedHandle = default(JobHandle);
-            foreach (var world in Worlds)
+            for (var index = 0; index < Worlds.Count; index++)
             {
+                var world = Worlds[index];
                 var worldHandle = world.LateUpdate(deltaTime);
                 combinedHandle = JobHandle.CombineDependencies(combinedHandle, worldHandle);
             }
@@ -151,8 +153,9 @@ namespace UnsafeEcs.Core.Worlds
         public static void FixedUpdate(float deltaTime)
         {
             var combinedHandle = default(JobHandle);
-            foreach (var world in Worlds)
+            for (var index = 0; index < Worlds.Count; index++)
             {
+                var world = Worlds[index];
                 var worldHandle = world.FixedUpdate(deltaTime);
                 combinedHandle = JobHandle.CombineDependencies(combinedHandle, worldHandle);
             }

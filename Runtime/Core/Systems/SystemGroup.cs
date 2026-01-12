@@ -31,8 +31,9 @@ namespace UnsafeEcs.Core.Systems
 
         public override void OnAwake()
         {
-            foreach (var system in systems)
+            for (var index = 0; index < systems.Count; index++)
             {
+                var system = systems[index];
                 if (system.world == null)
                 {
                     system.world = world;
@@ -47,20 +48,21 @@ namespace UnsafeEcs.Core.Systems
         public override void OnUpdate()
         {
             var groupDependency = default(JobHandle);
-            foreach (var system in systems)
+            for (var i = 0; i < systems.Count; i++)
             {
-                if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
-                {
-                    system.dependency = groupDependency;
+                var system = systems[i];
+                if ((system.UpdateMask & SystemUpdateMask.Update) == 0)
+                    continue;
+
+                system.dependency = groupDependency;
 #if UNITY_EDITOR
-                    system.BeginProfiling();
+                system.BeginProfiling();
 #endif
-                    system.OnUpdate();
+                system.OnUpdate();
 #if UNITY_EDITOR
-                    system.EndProfiling();
+                system.EndProfiling();
 #endif
-                    groupDependency = system.dependency;
-                }
+                groupDependency = system.dependency;
             }
 
             groupDependency.Complete();
@@ -69,20 +71,21 @@ namespace UnsafeEcs.Core.Systems
         public override void OnLateUpdate()
         {
             var groupDependency = default(JobHandle);
-            foreach (var system in systems)
+            for (var index = 0; index < systems.Count; index++)
             {
-                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
-                {
-                    system.dependency = groupDependency;
+                var system = systems[index];
+                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) == 0)
+                    continue;
+                
+                system.dependency = groupDependency;
 #if UNITY_EDITOR
-                    system.BeginProfiling();
+                system.BeginProfiling();
 #endif
-                    system.OnLateUpdate();
+                system.OnLateUpdate();
 #if UNITY_EDITOR
-                    system.EndProfiling();
+                system.EndProfiling();
 #endif
-                    groupDependency = system.dependency;
-                }
+                groupDependency = system.dependency;
             }
 
             groupDependency.Complete();
@@ -91,20 +94,21 @@ namespace UnsafeEcs.Core.Systems
         public override void OnFixedUpdate()
         {
             var groupDependency = default(JobHandle);
-            foreach (var system in systems)
+            for (var index = 0; index < systems.Count; index++)
             {
-                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
-                {
-                    system.dependency = groupDependency;
+                var system = systems[index];
+                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) == 0)
+                    continue;
+                
+                system.dependency = groupDependency;
 #if UNITY_EDITOR
-                    system.BeginProfiling();
+                system.BeginProfiling();
 #endif
-                    system.OnFixedUpdate();
+                system.OnFixedUpdate();
 #if UNITY_EDITOR
-                    system.EndProfiling();
+                system.EndProfiling();
 #endif
-                    groupDependency = system.dependency;
-                }
+                groupDependency = system.dependency;
             }
 
             groupDependency.Complete();
@@ -112,8 +116,11 @@ namespace UnsafeEcs.Core.Systems
 
         public override void OnDestroy()
         {
-            foreach (var system in systems)
+            for (var index = 0; index < systems.Count; index++)
+            {
+                var system = systems[index];
                 system.OnDestroy();
+            }
         }
     }
 }
