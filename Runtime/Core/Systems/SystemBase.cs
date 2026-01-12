@@ -90,6 +90,16 @@ namespace UnsafeEcs.Core.Systems
             return world.EntityManager.GetComponentArray<T>();
         }
 
+        /// <summary>
+        /// Gets a ComponentArray using a pre-cached type index for maximum performance.
+        /// Use this when calling GetComponentArray repeatedly with the same type.
+        /// Cache the typeIndex once in OnAwake() using TypeManager.GetComponentTypeIndex&lt;T&gt;().
+        /// </summary>
+        protected ComponentArray<T> GetComponentArray<T>(int typeIndex) where T : unmanaged, IComponent
+        {
+            return world.EntityManager.GetComponentArray<T>(typeIndex);
+        }
+
         protected BufferArray<T> GetBufferArray<T>() where T : unmanaged, IBufferElement
         {
             return world.EntityManager.GetBufferArray<T>();

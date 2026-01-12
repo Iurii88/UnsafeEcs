@@ -197,7 +197,17 @@ namespace UnsafeEcs.Core.Entities
         public ComponentArray<T> GetComponentArray<T>() where T : unmanaged, IComponent
         {
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
+            return GetComponentArray<T>(typeIndex);
+        }
 
+        /// <summary>
+        /// Gets a ComponentArray using a pre-cached type index for maximum performance.
+        /// Use this when calling GetComponentArray repeatedly with the same type.
+        /// Cache the typeIndex once using TypeManager.GetComponentTypeIndex&lt;T&gt;().
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ComponentArray<T> GetComponentArray<T>(int typeIndex) where T : unmanaged, IComponent
+        {
             // Fast path: chunk already exists (common case in hot loops)
             if (typeIndex < chunks.m_length)
             {
