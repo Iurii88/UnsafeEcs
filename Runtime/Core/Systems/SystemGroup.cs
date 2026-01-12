@@ -7,11 +7,17 @@ namespace UnsafeEcs.Core.Systems
     {
         public readonly List<SystemBase> systems = new();
 
+        // Pre-filtered lists for each update type to avoid checking UpdateMask every frame
+        private readonly List<SystemBase> m_updateSystems = new();
+        private readonly List<SystemBase> m_lateUpdateSystems = new();
+        private readonly List<SystemBase> m_fixedUpdateSystems = new();
+
         public override SystemUpdateMask UpdateMask => SystemUpdateMask.All;
 
         public void AddSystem(SystemBase system)
         {
             systems.Add(system);
+            RegisterSystemForUpdates(system);
             if (world != null)
             {
                 system.world = world;
@@ -21,10 +27,28 @@ namespace UnsafeEcs.Core.Systems
             }
         }
 
+        private void RegisterSystemForUpdates(SystemBase system)
+        {
+            if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
+                m_updateSystems.Add(system);
+            if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
+                m_lateUpdateSystems.Add(system);
+            if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
+                m_fixedUpdateSystems.Add(system);
+        }
+
+        private void UnregisterSystemFromUpdates(SystemBase system)
+        {
+            m_updateSystems.Remove(system);
+            m_lateUpdateSystems.Remove(system);
+            m_fixedUpdateSystems.Remove(system);
+        }
+
         public void RemoveSystem(SystemBase system)
         {
             system.OnDestroy();
             systems.Remove(system);
+            UnregisterSystemFromUpdates(system);
             world.systemByType.Remove(system.GetType());
             system.world = null;
         }
@@ -48,12 +72,9 @@ namespace UnsafeEcs.Core.Systems
         public override void OnUpdate()
         {
             var groupDependency = default(JobHandle);
-            for (var i = 0; i < systems.Count; i++)
+            for (var i = 0; i < m_updateSystems.Count; i++)
             {
-                var system = systems[i];
-                if ((system.UpdateMask & SystemUpdateMask.Update) == 0)
-                    continue;
-
+                var system = m_updateSystems[i];
                 system.dependency = groupDependency;
 #if UNITY_EDITOR
                 system.BeginProfiling();
@@ -71,12 +92,9 @@ namespace UnsafeEcs.Core.Systems
         public override void OnLateUpdate()
         {
             var groupDependency = default(JobHandle);
-            for (var index = 0; index < systems.Count; index++)
+            for (var i = 0; i < m_lateUpdateSystems.Count; i++)
             {
-                var system = systems[index];
-                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) == 0)
-                    continue;
-                
+                var system = m_lateUpdateSystems[i];
                 system.dependency = groupDependency;
 #if UNITY_EDITOR
                 system.BeginProfiling();
@@ -94,12 +112,9 @@ namespace UnsafeEcs.Core.Systems
         public override void OnFixedUpdate()
         {
             var groupDependency = default(JobHandle);
-            for (var index = 0; index < systems.Count; index++)
+            for (var i = 0; i < m_fixedUpdateSystems.Count; i++)
             {
-                var system = systems[index];
-                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) == 0)
-                    continue;
-                
+                var system = m_fixedUpdateSystems[i];
                 system.dependency = groupDependency;
 #if UNITY_EDITOR
                 system.BeginProfiling();

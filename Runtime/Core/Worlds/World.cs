@@ -16,6 +16,11 @@ namespace UnsafeEcs.Core.Worlds
 
         public readonly List<SystemBase> rootSystems = new();
         public readonly Dictionary<Type, SystemBase> systemByType = new();
+
+        // Pre-filtered lists for each update type to avoid checking UpdateMask every frame
+        private readonly List<SystemBase> m_updateSystems = new();
+        private readonly List<SystemBase> m_lateUpdateSystems = new();
+        private readonly List<SystemBase> m_fixedUpdateSystems = new();
         public float deltaTime;
         public float fixedDeltaTime;
         public float elapsedDeltaTime;
@@ -59,12 +64,9 @@ namespace UnsafeEcs.Core.Worlds
             elapsedDeltaTime += dt;
             var dependency = inputDependency;
 
-            for (var index = 0; index < rootSystems.Count; index++)
+            for (var i = 0; i < m_updateSystems.Count; i++)
             {
-                var system = rootSystems[index];
-                if ((system.UpdateMask & SystemUpdateMask.Update) == 0)
-                    continue;
-                
+                var system = m_updateSystems[i];
                 system.dependency = dependency;
 #if UNITY_EDITOR
                 system.BeginProfiling();
@@ -83,12 +85,9 @@ namespace UnsafeEcs.Core.Worlds
         {
             var dependency = inputDependency;
 
-            for (var index = 0; index < rootSystems.Count; index++)
+            for (var i = 0; i < m_lateUpdateSystems.Count; i++)
             {
-                var system = rootSystems[index];
-                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) == 0)
-                    continue;
-                
+                var system = m_lateUpdateSystems[i];
                 system.dependency = dependency;
 #if UNITY_EDITOR
                 system.BeginProfiling();
@@ -109,12 +108,9 @@ namespace UnsafeEcs.Core.Worlds
             elapsedFixedDeltaTime += dt;
             var dependency = inputDependency;
 
-            for (var index = 0; index < rootSystems.Count; index++)
+            for (var i = 0; i < m_fixedUpdateSystems.Count; i++)
             {
-                var system = rootSystems[index];
-                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) == 0)
-                    continue;
-                
+                var system = m_fixedUpdateSystems[i];
                 system.dependency = dependency;
 #if UNITY_EDITOR
                 system.BeginProfiling();
@@ -132,6 +128,7 @@ namespace UnsafeEcs.Core.Worlds
         public void AddRootSystem(SystemBase system)
         {
             rootSystems.Add(system);
+            RegisterSystemForUpdates(system);
             systemByType[system.GetType()] = system;
             system.world = this;
             onSystemAdded?.Invoke(system);
@@ -141,9 +138,27 @@ namespace UnsafeEcs.Core.Worlds
         public void RemoveRootSystem(SystemBase system)
         {
             rootSystems.Remove(system);
+            UnregisterSystemFromUpdates(system);
             systemByType.Remove(system.GetType());
             system.world = null;
             system.OnDestroy();
+        }
+
+        private void RegisterSystemForUpdates(SystemBase system)
+        {
+            if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
+                m_updateSystems.Add(system);
+            if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
+                m_lateUpdateSystems.Add(system);
+            if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
+                m_fixedUpdateSystems.Add(system);
+        }
+
+        private void UnregisterSystemFromUpdates(SystemBase system)
+        {
+            m_updateSystems.Remove(system);
+            m_lateUpdateSystems.Remove(system);
+            m_fixedUpdateSystems.Remove(system);
         }
 
         public bool HasSystem<T>()
