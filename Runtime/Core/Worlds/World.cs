@@ -236,7 +236,7 @@ namespace UnsafeEcs.Core.Worlds
         }
 
         #region WorldData convenience methods
-        
+
         public void SetData<T>(T value) => data.SetData(value);
         public T GetData<T>() => data.GetData<T>();
         public bool TryGetData<T>(out T value) => data.TryGetData(out value);
@@ -244,6 +244,38 @@ namespace UnsafeEcs.Core.Worlds
         public bool RemoveData<T>() => data.RemoveData<T>();
         public T GetOrCreateData<T>(Func<T> factory) => data.GetOrCreateData(factory);
         public T GetOrCreateData<T>() where T : new() => data.GetOrCreateData<T>();
+
+        #endregion
+
+        #region World Name
+
+        /// <summary>
+        /// Gets the name of this world, or null if no name has been set.
+        /// </summary>
+        public string Name => data.TryGetData<WorldName>(out var worldName) ? worldName.Value : null;
+
+        /// <summary>
+        /// Sets the name of this world.
+        /// </summary>
+        /// <param name="name">The name to assign to this world.</param>
+        public void SetName(string name)
+        {
+            if (data.TryGetData<WorldName>(out var existingName))
+                existingName.Value = name;
+            else
+                data.SetData(new WorldName(name));
+        }
+
+        /// <summary>
+        /// Gets the display name of this world. Returns the assigned name if set,
+        /// otherwise returns a default name based on the world's index in WorldManager.
+        /// </summary>
+        /// <param name="fallbackIndex">The index to use in the fallback name if no name is set.</param>
+        /// <returns>The world's display name.</returns>
+        public string GetDisplayName(int fallbackIndex)
+        {
+            return Name ?? $"World {fallbackIndex}";
+        }
 
         #endregion
     }

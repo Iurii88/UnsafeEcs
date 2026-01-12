@@ -176,8 +176,9 @@ namespace UnsafeEcs.Editor
                 var world = WorldManager.Worlds[i];
                 var isSelected = m_selectedWorld == world;
                 var systemCount = CountSystems(world);
+                var worldDisplayName = world.GetDisplayName(i);
 
-                DrawWorldItem($"World {i}", $"{systemCount} systems", isSelected, () =>
+                DrawWorldItem(worldDisplayName, $"{systemCount} systems", isSelected, () =>
                 {
                     m_selectedWorld = world;
                     m_selectedSystem = null;

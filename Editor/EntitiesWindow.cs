@@ -191,8 +191,9 @@ namespace UnsafeEcs.Editor
 
                 ref var entityManager = ref world.EntityManager;
                 var aliveCount = CountAliveEntities(ref entityManager);
+                var worldDisplayName = world.GetDisplayName(i);
 
-                DrawWorldItem($"World {i}", $"{aliveCount} entities", isSelected, () =>
+                DrawWorldItem(worldDisplayName, $"{aliveCount} entities", isSelected, () =>
                 {
                     m_selectedWorld = world;
                     m_selectedEntityId = -1;

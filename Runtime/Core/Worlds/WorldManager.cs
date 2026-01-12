@@ -48,9 +48,11 @@ namespace UnsafeEcs.Core.Worlds
             m_dontDestroyOnLoadPrivate = false;
         }
 
-        public static World CreateWorld(int initialCapacity = 0)
+        public static World CreateWorld(int initialCapacity = 0, string name = null)
         {
             var world = new World(initialCapacity);
+            if (!string.IsNullOrEmpty(name))
+                world.SetName(name);
             Worlds.Add(world);
             return world;
         }
