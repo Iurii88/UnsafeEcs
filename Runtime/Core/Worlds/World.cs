@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
@@ -17,31 +18,10 @@ namespace UnsafeEcs.Core.Worlds
         public readonly List<SystemBase> rootSystems = new();
         public readonly Dictionary<Type, SystemBase> systemByType = new();
 
-        // Pre-filtered lists for each update type to avoid checking UpdateMask every frame
-        private readonly List<SystemBase> m_updateSystems = new();
-        private readonly List<SystemBase> m_lateUpdateSystems = new();
-        private readonly List<SystemBase> m_fixedUpdateSystems = new();
+        private SystemBase[] m_updateSystems = Array.Empty<SystemBase>();
+        private SystemBase[] m_lateUpdateSystems = Array.Empty<SystemBase>();
+        private SystemBase[] m_fixedUpdateSystems = Array.Empty<SystemBase>();
 
-        // Baked arrays for maximum performance - eliminates virtual dispatch
-        private Action[] m_bakedUpdateActions;
-        private Action[] m_bakedLateUpdateActions;
-        private Action[] m_bakedFixedUpdateActions;
-        private SystemBase[] m_bakedUpdateSystemRefs;
-        private SystemBase[] m_bakedLateUpdateSystemRefs;
-        private SystemBase[] m_bakedFixedUpdateSystemRefs;
-        private int m_bakedUpdateCount;
-        private int m_bakedLateUpdateCount;
-        private int m_bakedFixedUpdateCount;
-        private bool m_isBaked;
-
-#if UNITY_EDITOR
-        private Action[] m_bakedUpdateBeginProfiling;
-        private Action[] m_bakedUpdateEndProfiling;
-        private Action[] m_bakedLateUpdateBeginProfiling;
-        private Action[] m_bakedLateUpdateEndProfiling;
-        private Action[] m_bakedFixedUpdateBeginProfiling;
-        private Action[] m_bakedFixedUpdateEndProfiling;
-#endif
         public float deltaTime;
         public float fixedDeltaTime;
         public float elapsedDeltaTime;
@@ -79,276 +59,143 @@ namespace UnsafeEcs.Core.Worlds
             m_entityManager.Dispose();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public JobHandle Update(float dt, JobHandle inputDependency = default)
         {
             deltaTime = dt;
             elapsedDeltaTime += dt;
-            var dependency = inputDependency;
+            var dep = inputDependency;
+            var arr = m_updateSystems;
+            var len = arr.Length;
 
-            if (m_isBaked)
+            for (var i = 0; i < len; i++)
             {
-                // FAST PATH: Use baked arrays - no virtual dispatch
-                var actions = m_bakedUpdateActions;
-                var systemRefs = m_bakedUpdateSystemRefs;
-                var count = m_bakedUpdateCount;
+                var s = arr[i];
+                s.dependency = dep;
 #if UNITY_EDITOR
-                var beginProfiling = m_bakedUpdateBeginProfiling;
-                var endProfiling = m_bakedUpdateEndProfiling;
+                s.BeginProfiling();
 #endif
-
-                for (var i = 0; i < count; i++)
-                {
-                    systemRefs[i].dependency = dependency;
+                s.OnUpdate();
 #if UNITY_EDITOR
-                    beginProfiling[i]();
+                s.EndProfiling();
 #endif
-                    actions[i]();
-#if UNITY_EDITOR
-                    endProfiling[i]();
-#endif
-                    dependency = systemRefs[i].dependency;
-                }
-            }
-            else
-            {
-                // SLOW PATH: Original implementation before baking
-                for (var i = 0; i < m_updateSystems.Count; i++)
-                {
-                    var system = m_updateSystems[i];
-                    system.dependency = dependency;
-#if UNITY_EDITOR
-                    system.BeginProfiling();
-#endif
-                    system.OnUpdate();
-#if UNITY_EDITOR
-                    system.EndProfiling();
-#endif
-                    dependency = system.dependency;
-                }
+                dep = s.dependency;
             }
 
-            return dependency;
+            return dep;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public JobHandle LateUpdate(float dt, JobHandle inputDependency = default)
         {
-            var dependency = inputDependency;
+            var dep = inputDependency;
+            var arr = m_lateUpdateSystems;
+            var len = arr.Length;
 
-            if (m_isBaked)
+            for (var i = 0; i < len; i++)
             {
-                // FAST PATH: Use baked arrays - no virtual dispatch
-                var actions = m_bakedLateUpdateActions;
-                var systemRefs = m_bakedLateUpdateSystemRefs;
-                var count = m_bakedLateUpdateCount;
+                var s = arr[i];
+                s.dependency = dep;
 #if UNITY_EDITOR
-                var beginProfiling = m_bakedLateUpdateBeginProfiling;
-                var endProfiling = m_bakedLateUpdateEndProfiling;
+                s.BeginProfiling();
 #endif
-
-                for (var i = 0; i < count; i++)
-                {
-                    systemRefs[i].dependency = dependency;
+                s.OnLateUpdate();
 #if UNITY_EDITOR
-                    beginProfiling[i]();
+                s.EndProfiling();
 #endif
-                    actions[i]();
-#if UNITY_EDITOR
-                    endProfiling[i]();
-#endif
-                    dependency = systemRefs[i].dependency;
-                }
-            }
-            else
-            {
-                // SLOW PATH: Original implementation before baking
-                for (var i = 0; i < m_lateUpdateSystems.Count; i++)
-                {
-                    var system = m_lateUpdateSystems[i];
-                    system.dependency = dependency;
-#if UNITY_EDITOR
-                    system.BeginProfiling();
-#endif
-                    system.OnLateUpdate();
-#if UNITY_EDITOR
-                    system.EndProfiling();
-#endif
-                    dependency = system.dependency;
-                }
+                dep = s.dependency;
             }
 
-            return dependency;
+            return dep;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public JobHandle FixedUpdate(float dt, JobHandle inputDependency = default)
         {
             fixedDeltaTime = dt;
             elapsedFixedDeltaTime += dt;
-            var dependency = inputDependency;
+            var dep = inputDependency;
+            var arr = m_fixedUpdateSystems;
+            var len = arr.Length;
 
-            if (m_isBaked)
+            for (var i = 0; i < len; i++)
             {
-                // FAST PATH: Use baked arrays - no virtual dispatch
-                var actions = m_bakedFixedUpdateActions;
-                var systemRefs = m_bakedFixedUpdateSystemRefs;
-                var count = m_bakedFixedUpdateCount;
+                var s = arr[i];
+                s.dependency = dep;
 #if UNITY_EDITOR
-                var beginProfiling = m_bakedFixedUpdateBeginProfiling;
-                var endProfiling = m_bakedFixedUpdateEndProfiling;
+                s.BeginProfiling();
 #endif
-
-                for (var i = 0; i < count; i++)
-                {
-                    systemRefs[i].dependency = dependency;
+                s.OnFixedUpdate();
 #if UNITY_EDITOR
-                    beginProfiling[i]();
+                s.EndProfiling();
 #endif
-                    actions[i]();
-#if UNITY_EDITOR
-                    endProfiling[i]();
-#endif
-                    dependency = systemRefs[i].dependency;
-                }
-            }
-            else
-            {
-                // SLOW PATH: Original implementation before baking
-                for (var i = 0; i < m_fixedUpdateSystems.Count; i++)
-                {
-                    var system = m_fixedUpdateSystems[i];
-                    system.dependency = dependency;
-#if UNITY_EDITOR
-                    system.BeginProfiling();
-#endif
-                    system.OnFixedUpdate();
-#if UNITY_EDITOR
-                    system.EndProfiling();
-#endif
-                    dependency = system.dependency;
-                }
+                dep = s.dependency;
             }
 
-            return dependency;
+            return dep;
         }
 
         public void AddRootSystem(SystemBase system)
         {
             rootSystems.Add(system);
-            RegisterSystemForUpdates(system);
             systemByType[system.GetType()] = system;
             system.world = this;
             onSystemAdded?.Invoke(system);
             system.OnAwake();
 
-            // Auto-rebake if already baked
-            if (m_isBaked)
-                Bake();
+            // Auto-rebake when adding systems at runtime
+            Bake();
         }
 
         public void RemoveRootSystem(SystemBase system)
         {
             rootSystems.Remove(system);
-            UnregisterSystemFromUpdates(system);
             systemByType.Remove(system.GetType());
             system.world = null;
             system.OnDestroy();
 
-            // Auto-rebake if already baked
-            if (m_isBaked)
-                Bake();
+            // Auto-rebake when removing systems
+            Bake();
         }
 
-        private void RegisterSystemForUpdates(SystemBase system)
-        {
-            if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
-                m_updateSystems.Add(system);
-            if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
-                m_lateUpdateSystems.Add(system);
-            if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
-                m_fixedUpdateSystems.Add(system);
-        }
-
-        private void UnregisterSystemFromUpdates(SystemBase system)
-        {
-            m_updateSystems.Remove(system);
-            m_lateUpdateSystems.Remove(system);
-            m_fixedUpdateSystems.Remove(system);
-        }
-
-        /// <summary>
-        /// Bakes all system lists into optimized arrays for high-performance iteration.
-        /// Eliminates virtual dispatch by pre-binding delegates.
-        /// Call this after all systems have been added (typically after bootstrap).
-        /// </summary>
         public void Bake()
         {
-            // Bake Update systems
-            m_bakedUpdateCount = m_updateSystems.Count;
-            m_bakedUpdateActions = new Action[m_bakedUpdateCount];
-            m_bakedUpdateSystemRefs = new SystemBase[m_bakedUpdateCount];
-#if UNITY_EDITOR
-            m_bakedUpdateBeginProfiling = new Action[m_bakedUpdateCount];
-            m_bakedUpdateEndProfiling = new Action[m_bakedUpdateCount];
-#endif
+            var updateCount = 0;
+            var lateUpdateCount = 0;
+            var fixedUpdateCount = 0;
 
-            for (var i = 0; i < m_bakedUpdateCount; i++)
-            {
-                var system = m_updateSystems[i];
-                m_bakedUpdateSystemRefs[i] = system;
-                m_bakedUpdateActions[i] = system.OnUpdate;
-#if UNITY_EDITOR
-                m_bakedUpdateBeginProfiling[i] = system.BeginProfiling;
-                m_bakedUpdateEndProfiling[i] = system.EndProfiling;
-#endif
-            }
-
-            // Bake LateUpdate systems
-            m_bakedLateUpdateCount = m_lateUpdateSystems.Count;
-            m_bakedLateUpdateActions = new Action[m_bakedLateUpdateCount];
-            m_bakedLateUpdateSystemRefs = new SystemBase[m_bakedLateUpdateCount];
-#if UNITY_EDITOR
-            m_bakedLateUpdateBeginProfiling = new Action[m_bakedLateUpdateCount];
-            m_bakedLateUpdateEndProfiling = new Action[m_bakedLateUpdateCount];
-#endif
-
-            for (var i = 0; i < m_bakedLateUpdateCount; i++)
-            {
-                var system = m_lateUpdateSystems[i];
-                m_bakedLateUpdateSystemRefs[i] = system;
-                m_bakedLateUpdateActions[i] = system.OnLateUpdate;
-#if UNITY_EDITOR
-                m_bakedLateUpdateBeginProfiling[i] = system.BeginProfiling;
-                m_bakedLateUpdateEndProfiling[i] = system.EndProfiling;
-#endif
-            }
-
-            // Bake FixedUpdate systems
-            m_bakedFixedUpdateCount = m_fixedUpdateSystems.Count;
-            m_bakedFixedUpdateActions = new Action[m_bakedFixedUpdateCount];
-            m_bakedFixedUpdateSystemRefs = new SystemBase[m_bakedFixedUpdateCount];
-#if UNITY_EDITOR
-            m_bakedFixedUpdateBeginProfiling = new Action[m_bakedFixedUpdateCount];
-            m_bakedFixedUpdateEndProfiling = new Action[m_bakedFixedUpdateCount];
-#endif
-
-            for (var i = 0; i < m_bakedFixedUpdateCount; i++)
-            {
-                var system = m_fixedUpdateSystems[i];
-                m_bakedFixedUpdateSystemRefs[i] = system;
-                m_bakedFixedUpdateActions[i] = system.OnFixedUpdate;
-#if UNITY_EDITOR
-                m_bakedFixedUpdateBeginProfiling[i] = system.BeginProfiling;
-                m_bakedFixedUpdateEndProfiling[i] = system.EndProfiling;
-#endif
-            }
-
-            // Recursively bake child SystemGroups
             for (var i = 0; i < rootSystems.Count; i++)
             {
-                if (rootSystems[i] is SystemGroup group)
-                    group.Bake();
+                var system = rootSystems[i];
+                if ((system.UpdateMask & SystemUpdateMask.Update) != 0) updateCount++;
+                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0) lateUpdateCount++;
+                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0) fixedUpdateCount++;
             }
 
-            m_isBaked = true;
+            m_updateSystems = new SystemBase[updateCount];
+            m_lateUpdateSystems = new SystemBase[lateUpdateCount];
+            m_fixedUpdateSystems = new SystemBase[fixedUpdateCount];
+
+            var updateIdx = 0;
+            var lateUpdateIdx = 0;
+            var fixedUpdateIdx = 0;
+
+            for (var i = 0; i < rootSystems.Count; i++)
+            {
+                var system = rootSystems[i];
+
+                if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
+                    m_updateSystems[updateIdx++] = system;
+
+                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
+                    m_lateUpdateSystems[lateUpdateIdx++] = system;
+
+                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
+                    m_fixedUpdateSystems[fixedUpdateIdx++] = system;
+
+                if (system is SystemGroup group)
+                    group.Bake();
+            }
         }
 
         public bool HasSystem<T>()

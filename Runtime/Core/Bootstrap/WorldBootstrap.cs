@@ -217,6 +217,13 @@ namespace UnsafeEcs.Core.Bootstrap
                 Log($"Baked world <color={ColorWorld}>#{worldEntry.Key}</color>", LogLevel.Normal);
             }
 
+            // Also bake any worlds in WorldManager.Worlds that aren't in CreatedWorlds
+            // (handles cases where worlds were pre-created before bootstrap)
+            foreach (var world in WorldManager.Worlds)
+            {
+                world.Bake();
+            }
+
             Log($"Total initialization time: <color={ColorHighlight}>{m_stopwatch.ElapsedMilliseconds}ms</color>", LogLevel.Minimal);
             m_stopwatch.Stop();
         }
