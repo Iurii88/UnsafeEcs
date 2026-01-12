@@ -87,6 +87,18 @@ namespace UnsafeEcs.Core.Worlds
             Worlds.Clear();
         }
 
+        /// <summary>
+        /// Bakes all registered worlds for optimal update performance.
+        /// Call this after all systems have been added to all worlds.
+        /// </summary>
+        public static void BakeAllWorlds()
+        {
+            for (var i = 0; i < Worlds.Count; i++)
+            {
+                Worlds[i].Bake();
+            }
+        }
+
         public static void Destroy()
         {
             if (m_worldManagerGo == null)

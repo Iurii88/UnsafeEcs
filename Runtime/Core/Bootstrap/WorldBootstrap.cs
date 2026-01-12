@@ -209,6 +209,14 @@ namespace UnsafeEcs.Core.Bootstrap
             Log("<b>=== SYSTEM INITIALIZATION PHASE ===</b>", LogLevel.Minimal);
             CreateSystemHierarchy(m_cache.allSystemTypes, m_cache.groupChildren);
 
+            // Bake all worlds for optimal runtime performance
+            Log("<b>=== BAKING PHASE ===</b>", LogLevel.Minimal);
+            foreach (var worldEntry in CreatedWorlds)
+            {
+                worldEntry.Value.Bake();
+                Log($"Baked world <color={ColorWorld}>#{worldEntry.Key}</color>", LogLevel.Normal);
+            }
+
             Log($"Total initialization time: <color={ColorHighlight}>{m_stopwatch.ElapsedMilliseconds}ms</color>", LogLevel.Minimal);
             m_stopwatch.Stop();
         }
