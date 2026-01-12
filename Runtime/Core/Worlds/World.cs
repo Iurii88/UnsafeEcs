@@ -44,8 +44,11 @@ namespace UnsafeEcs.Core.Worlds
 
         public void Dispose()
         {
-            foreach (var regularSystem in rootSystems)
+            for (var index = 0; index < rootSystems.Count; index++)
+            {
+                var regularSystem = rootSystems[index];
                 regularSystem.OnDestroy();
+            }
 
             m_entityManager.Dispose();
         }
@@ -56,19 +59,22 @@ namespace UnsafeEcs.Core.Worlds
             elapsedDeltaTime += dt;
             var dependency = inputDependency;
 
-            foreach (var system in rootSystems)
-                if ((system.UpdateMask & SystemUpdateMask.Update) != 0)
-                {
-                    system.dependency = dependency;
+            for (var index = 0; index < rootSystems.Count; index++)
+            {
+                var system = rootSystems[index];
+                if ((system.UpdateMask & SystemUpdateMask.Update) == 0)
+                    continue;
+                
+                system.dependency = dependency;
 #if UNITY_EDITOR
-                    system.BeginProfiling();
+                system.BeginProfiling();
 #endif
-                    system.OnUpdate();
+                system.OnUpdate();
 #if UNITY_EDITOR
-                    system.EndProfiling();
+                system.EndProfiling();
 #endif
-                    dependency = system.dependency;
-                }
+                dependency = system.dependency;
+            }
 
             return dependency;
         }
@@ -77,19 +83,22 @@ namespace UnsafeEcs.Core.Worlds
         {
             var dependency = inputDependency;
 
-            foreach (var system in rootSystems)
-                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) != 0)
-                {
-                    system.dependency = dependency;
+            for (var index = 0; index < rootSystems.Count; index++)
+            {
+                var system = rootSystems[index];
+                if ((system.UpdateMask & SystemUpdateMask.LateUpdate) == 0)
+                    continue;
+                
+                system.dependency = dependency;
 #if UNITY_EDITOR
-                    system.BeginProfiling();
+                system.BeginProfiling();
 #endif
-                    system.OnLateUpdate();
+                system.OnLateUpdate();
 #if UNITY_EDITOR
-                    system.EndProfiling();
+                system.EndProfiling();
 #endif
-                    dependency = system.dependency;
-                }
+                dependency = system.dependency;
+            }
 
             return dependency;
         }
@@ -100,19 +109,22 @@ namespace UnsafeEcs.Core.Worlds
             elapsedFixedDeltaTime += dt;
             var dependency = inputDependency;
 
-            foreach (var system in rootSystems)
-                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) != 0)
-                {
-                    system.dependency = dependency;
+            for (var index = 0; index < rootSystems.Count; index++)
+            {
+                var system = rootSystems[index];
+                if ((system.UpdateMask & SystemUpdateMask.FixedUpdate) == 0)
+                    continue;
+                
+                system.dependency = dependency;
 #if UNITY_EDITOR
-                    system.BeginProfiling();
+                system.BeginProfiling();
 #endif
-                    system.OnFixedUpdate();
+                system.OnFixedUpdate();
 #if UNITY_EDITOR
-                    system.EndProfiling();
+                system.EndProfiling();
 #endif
-                    dependency = system.dependency;
-                }
+                dependency = system.dependency;
+            }
 
             return dependency;
         }
