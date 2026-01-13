@@ -330,6 +330,19 @@ namespace UnsafeEcs.Editor
             var boxRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             EditorGUI.DrawRect(boxRect, new Color(0.22f, 0.22f, 0.22f));
 
+            // Handle double-click to open script
+            if (Event.current.type == EventType.MouseDown &&
+                Event.current.clickCount == 2 &&
+                boxRect.Contains(Event.current.mousePosition))
+            {
+                var componentType = ComponentTypeRegistry.GetTypeByIndex(component.Index);
+                if (componentType != null)
+                {
+                    EditorScriptUtility.OpenScriptForType(componentType);
+                    Event.current.Use();
+                }
+            }
+
             // Header row with foldout
             EditorGUILayout.BeginHorizontal();
 

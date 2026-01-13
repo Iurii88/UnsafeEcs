@@ -316,6 +316,12 @@ namespace UnsafeEcs.Editor
             // Handle click
             if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
             {
+                // Double-click opens the script in IDE
+                if (Event.current.clickCount == 2)
+                {
+                    EditorScriptUtility.OpenScriptForType(system.GetType());
+                }
+
                 m_selectedSystem = system;
                 Event.current.Use();
             }
