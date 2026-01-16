@@ -61,14 +61,14 @@ namespace UnsafeEcs.Core.Entities
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             if (typeIndex >= chunks.Length)
-                throw new InvalidOperationException($"Entity does not have buffer component of type {typeof(T).Name}");
+                throw new InvalidOperationException($"Entity {entity.id} does not have buffer {typeof(T).Name}");
 
             var chunk = chunks.Ptr[typeIndex].AsBufferChunk();
             if (chunk == null)
-                throw new InvalidOperationException($"Entity does not have buffer component of type {typeof(T).Name}");
+                throw new InvalidOperationException($"Entity {entity.id} does not have buffer {typeof(T).Name}");
 
             if (!chunk->TryGetBufferIndex(entity.id, out var index))
-                throw new InvalidOperationException($"Entity does not have buffer component of type {typeof(T).Name}");
+                throw new InvalidOperationException($"Entity {entity.id} does not have buffer {typeof(T).Name}");
 
             var header = (BufferHeader*)(chunk->ptr + index * chunk->headerSize);
             return new DynamicBuffer<T>(header);

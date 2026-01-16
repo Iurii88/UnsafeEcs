@@ -26,13 +26,13 @@ namespace UnsafeEcs.Core.Components
 #if DEBUG
             // Check bounds first to avoid memory access violation
             if (entityId > m_chunkPtr->maxEntityId)
-                throw new InvalidOperationException($"Entity {entityId} does not have this component");
+                throw new InvalidOperationException($"Entity {entityId} does not have component {typeof(T).Name}");
 #endif
 
             var index = m_chunkPtr->componentIndices[entityId];
 #if DEBUG
             if (index < 0)
-                throw new InvalidOperationException($"Entity {entityId} does not have this component");
+                throw new InvalidOperationException($"Entity {entityId} does not have component {typeof(T).Name}");
 #endif
 
             return ref this[index];

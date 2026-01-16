@@ -75,16 +75,16 @@ namespace UnsafeEcs.Core.Entities
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
             if (typeIndex >= chunks.Length)
-                throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
+                throw new InvalidOperationException($"Entity {entity.id} does not have component {typeof(T).Name}");
 
             var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
             if (chunk == null)
-                throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
+                throw new InvalidOperationException($"Entity {entity.id} does not have component {typeof(T).Name}");
 
             var componentPtr = chunk->GetComponentPtr(entity.id);
 
             if (componentPtr == null)
-                throw new InvalidOperationException($"Entity does not have component of type {typeof(T).Name}");
+                throw new InvalidOperationException($"Entity {entity.id} does not have component {typeof(T).Name}");
 
             return ref UnsafeUtility.AsRef<T>(componentPtr);
         }
