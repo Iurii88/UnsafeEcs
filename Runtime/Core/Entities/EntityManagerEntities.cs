@@ -198,9 +198,10 @@ namespace UnsafeEcs.Core.Entities
             {
                 if (!TypeManager.IsBufferType(typeIndex))
                 {
-                    if (typeIndex >= chunks.Length)
+                    if (typeIndex >= chunks.Length || !chunks.Ptr[typeIndex].IsValid)
                     {
-                        chunks.Resize(typeIndex + 1);
+                        if (typeIndex >= chunks.Length)
+                            chunks.Resize(typeIndex + 1);
 
                         var size = TypeManager.GetTypeSizeByIndex(typeIndex);
                         var stackChunk = new ComponentChunk(size, InitialEntityCapacity, typeIndex, managerPtr);
@@ -227,9 +228,10 @@ namespace UnsafeEcs.Core.Entities
                 }
                 else
                 {
-                    if (typeIndex >= chunks.Length)
+                    if (typeIndex >= chunks.Length || !chunks.Ptr[typeIndex].IsValid)
                     {
-                        chunks.Resize(typeIndex + 1);
+                        if (typeIndex >= chunks.Length)
+                            chunks.Resize(typeIndex + 1);
 
                         var elementSize = TypeManager.GetTypeSizeByIndex(typeIndex);
                         var bufferChunk = (BufferChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BufferChunk>(), UnsafeUtility.AlignOf<BufferChunk>(), Allocator.Persistent);

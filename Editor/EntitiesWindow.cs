@@ -38,6 +38,9 @@ namespace UnsafeEcs.Editor
             public uint Version;
             public EntityArchetype Archetype;
             public List<ComponentInfo> Components;
+            public string Name; // From EntityName component if present
+
+            public string DisplayName => string.IsNullOrEmpty(Name) ? $"Entity {Id}" : Name;
         }
 
         private struct ComponentInfo
@@ -282,7 +285,16 @@ namespace UnsafeEcs.Editor
             GUILayout.Space(12);
 
             var headerStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 16 };
-            GUILayout.Label($"Entity {entity.Id}", headerStyle);
+            GUILayout.Label(entity.DisplayName, headerStyle);
+
+            if (!string.IsNullOrEmpty(entity.Name))
+            {
+                var idStyle = new GUIStyle(EditorStyles.miniLabel)
+                {
+                    normal = { textColor = new Color(0.5f, 0.5f, 0.5f) }
+                };
+                GUILayout.Label($"(id: {entity.Id})", idStyle);
+            }
 
             var versionStyle = new GUIStyle(EditorStyles.miniLabel)
             {
@@ -694,7 +706,7 @@ namespace UnsafeEcs.Editor
                 fontStyle = isSelected ? FontStyle.Bold : FontStyle.Normal,
                 normal = { textColor = isSelected ? Color.white : new Color(0.85f, 0.85f, 0.85f) }
             };
-            GUILayout.Label($"Entity {entity.Id}:{entity.Version}", labelStyle);
+            GUILayout.Label($"{entity.DisplayName}:{entity.Version}", labelStyle);
 
             GUILayout.FlexibleSpace();
 
@@ -763,6 +775,9 @@ namespace UnsafeEcs.Editor
 
             ref var entityManager = ref m_selectedWorld.EntityManager;
 
+            // Get EntityName component array for name lookup
+            var entityNameArray = entityManager.GetComponentArray<EntityName>();
+
             for (var i = 0; i < entityManager.entities.m_length; i++)
             {
                 if (entityManager.deadEntities.Ptr[i])
@@ -785,12 +800,20 @@ namespace UnsafeEcs.Editor
                     });
                 }
 
+                // Try to get entity name from EntityName component
+                string entityName = null;
+                if (entityNameArray.TryGet(entity, out var nameComponent))
+                {
+                    entityName = nameComponent.Value.ToString();
+                }
+
                 m_entityCache.Add(new EntityInfo
                 {
                     Id = entity.id,
                     Version = entity.version,
                     Archetype = archetype,
-                    Components = components
+                    Components = components,
+                    Name = entityName
                 });
             }
 
@@ -806,6 +829,15 @@ namespace UnsafeEcs.Editor
 
             foreach (var entity in m_entityCache)
             {
+                // Search by entity name first
+                if (!string.IsNullOrEmpty(entity.Name) &&
+                    entity.Name.IndexOf(m_searchString, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    m_filteredEntities.Add(entity);
+                    continue;
+                }
+
+                // Search by component names
                 foreach (var component in entity.Components)
                 {
                     if (component.Name.IndexOf(m_searchString, StringComparison.OrdinalIgnoreCase) >= 0)
