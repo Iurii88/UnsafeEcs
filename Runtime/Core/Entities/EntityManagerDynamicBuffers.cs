@@ -56,25 +56,25 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
+                EcsDebug.ThrowEntityNotAlive(entity.id, m_managerPtr);
 #endif
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (typeIndex >= chunks.Length)
-                EcsDebug.ThrowNoBuffer<T>(entity.id, typeIndex, GetEntityDebugString(entity));
+                EcsDebug.ThrowNoBuffer<T>(entity.id, typeIndex, m_managerPtr);
 #endif
 
             var chunk = chunks.Ptr[typeIndex].AsBufferChunk();
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (chunk == null)
-                EcsDebug.ThrowNoBuffer<T>(entity.id, typeIndex, GetEntityDebugString(entity));
+                EcsDebug.ThrowNoBuffer<T>(entity.id, typeIndex, m_managerPtr);
 #endif
 
             if (!chunk->TryGetBufferIndex(entity.id, out var index))
             {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
-                EcsDebug.ThrowNoBuffer<T>(entity.id, typeIndex, GetEntityDebugString(entity));
+                EcsDebug.ThrowNoBuffer<T>(entity.id, typeIndex, m_managerPtr);
 #else
                 return default;
 #endif
@@ -88,7 +88,7 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
+                EcsDebug.ThrowEntityNotAlive(entity.id, m_managerPtr);
 #endif
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
             if (typeIndex >= chunks.Length)
@@ -152,7 +152,7 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
+                EcsDebug.ThrowEntityNotAlive(entity.id, m_managerPtr);
 #endif
             if (TryGetBuffer<T>(entity, out var buffer))
                 return buffer;
@@ -164,7 +164,7 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
+                EcsDebug.ThrowEntityNotAlive(entity.id, m_managerPtr);
 #endif
             var buffer = GetOrCreateBuffer<T>(entity);
             buffer.Clear();
@@ -176,7 +176,7 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
+                EcsDebug.ThrowEntityNotAlive(entity.id, m_managerPtr);
 #endif
             var buffer = GetOrCreateBuffer<T>(entity);
 
@@ -207,7 +207,7 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
+                EcsDebug.ThrowEntityNotAlive(entity.id, m_managerPtr);
 #endif
             var buffer = GetBuffer<T>(entity);
             return new ReadOnlyDynamicBuffer<T>(buffer);

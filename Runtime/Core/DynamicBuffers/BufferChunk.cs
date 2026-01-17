@@ -221,6 +221,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
         /// Gets a debug string for an entity, including EntityName and World name if available.
         /// Format: "[WorldName] EntityName (id:version)" or "[WorldName] Entity (id:version)" if no entity name.
         /// </summary>
+        [Unity.Burst.BurstDiscard]
         public string GetEntityDebugString(int entityId)
         {
             return managerPtr != null

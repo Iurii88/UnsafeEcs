@@ -110,6 +110,7 @@ namespace UnsafeEcs.Core.Entities
         /// Gets a debug string for an entity, including EntityName and World name if available.
         /// Format: "[WorldName] EntityName (id:version)" or "[WorldName] Entity (id:version)" if no entity name.
         /// </summary>
+        [Unity.Burst.BurstDiscard]
         public string GetEntityDebugString(Entity entity)
         {
             return GetEntityDebugString(entity.id);
@@ -120,6 +121,7 @@ namespace UnsafeEcs.Core.Entities
         /// Format: "[WorldName] EntityName (id:version)" or "[WorldName] Entity (id:version)" if no entity name.
         /// For dead entities: "[WorldName] Entity (id:version) [DEAD]"
         /// </summary>
+        [Unity.Burst.BurstDiscard]
         public string GetEntityDebugString(int entityId)
         {
             // Get world name

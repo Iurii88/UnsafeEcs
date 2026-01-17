@@ -55,7 +55,7 @@ namespace UnsafeEcs.Core.DynamicBuffers
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void ThrowNoBuffer(int entityId)
         {
-            EcsDebug.ThrowNoBuffer<T>(entityId, m_chunk->typeIndex, m_chunk->GetEntityDebugString(entityId));
+            EcsDebug.ThrowNoBuffer<T>(entityId, m_chunk->typeIndex, m_chunk->managerPtr);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -44,7 +44,7 @@ namespace UnsafeEcs.Core.Components
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void ThrowNoComponent(int entityId)
         {
-            EcsDebug.ThrowNoComponent<T>(entityId, m_chunkPtr->typeIndex, m_chunkPtr->GetEntityDebugString(entityId));
+            EcsDebug.ThrowNoComponent<T>(entityId, m_chunkPtr->typeIndex, m_chunkPtr->managerPtr);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
