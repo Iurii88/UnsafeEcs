@@ -1,4 +1,3 @@
-﻿using System;
 using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
@@ -46,7 +45,7 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
+                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
 #endif
 
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
@@ -70,26 +69,26 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
+                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (typeIndex >= chunks.Length)
-                throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have component {typeof(T).Name}");
+                EcsDebug.ThrowNoComponent<T>(entity.id, typeIndex, GetEntityDebugString(entity));
 #endif
 
             var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (chunk == null)
-                throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have component {typeof(T).Name}");
+                EcsDebug.ThrowNoComponent<T>(entity.id, typeIndex, GetEntityDebugString(entity));
 #endif
 
             var componentPtr = chunk->GetComponentPtr(entity.id);
 
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (componentPtr == null)
-                throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have component {typeof(T).Name}");
+                EcsDebug.ThrowNoComponent<T>(entity.id, typeIndex, GetEntityDebugString(entity));
 #endif
 
             return ref UnsafeUtility.AsRef<T>(componentPtr);
@@ -99,7 +98,7 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
+                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
@@ -119,7 +118,7 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
+                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
@@ -183,7 +182,7 @@ namespace UnsafeEcs.Core.Entities
         {
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
+                EcsDebug.ThrowEntityNotAlive(entity.id, GetEntityDebugString(entity));
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 

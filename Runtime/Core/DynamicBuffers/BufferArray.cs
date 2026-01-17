@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Components;
@@ -36,16 +36,26 @@ namespace UnsafeEcs.Core.DynamicBuffers
 
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (entity.id > m_chunk->maxEntityId)
-                throw new InvalidOperationException($"{m_chunk->GetEntityDebugString(entity.id)} does not have buffer {typeof(T).Name}");
+            {
+                ThrowNoBuffer(entity.id);
+            }
 #endif
 
             var index = m_chunk->bufferIndices[entity.id];
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (index < 0)
-                throw new InvalidOperationException($"{m_chunk->GetEntityDebugString(entity.id)} does not have buffer {typeof(T).Name}");
+            {
+                ThrowNoBuffer(entity.id);
+            }
 #endif
 
             return this[index];
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ThrowNoBuffer(int entityId)
+        {
+            EcsDebug.ThrowNoBuffer<T>(entityId, m_chunk->typeIndex, m_chunk->GetEntityDebugString(entityId));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

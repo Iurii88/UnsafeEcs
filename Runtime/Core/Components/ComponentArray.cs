@@ -1,4 +1,3 @@
-﻿using System;
 using System.Runtime.CompilerServices;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Entities;
@@ -26,16 +25,26 @@ namespace UnsafeEcs.Core.Components
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             // Check bounds first to avoid memory access violation
             if (entityId > m_chunkPtr->maxEntityId)
-                throw new InvalidOperationException($"{m_chunkPtr->GetEntityDebugString(entityId)} does not have component {typeof(T).Name}");
+            {
+                ThrowNoComponent(entityId);
+            }
 #endif
 
             var index = m_chunkPtr->componentIndices[entityId];
 #if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (index < 0)
-                throw new InvalidOperationException($"{m_chunkPtr->GetEntityDebugString(entityId)} does not have component {typeof(T).Name}");
+            {
+                ThrowNoComponent(entityId);
+            }
 #endif
 
             return ref this[index];
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void ThrowNoComponent(int entityId)
+        {
+            EcsDebug.ThrowNoComponent<T>(entityId, m_chunkPtr->typeIndex, m_chunkPtr->GetEntityDebugString(entityId));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
