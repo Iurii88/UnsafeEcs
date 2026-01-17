@@ -118,6 +118,7 @@ namespace UnsafeEcs.Core.Entities
         /// <summary>
         /// Gets a debug string for an entity by id, including EntityName and World name if available.
         /// Format: "[WorldName] EntityName (id:version)" or "[WorldName] Entity (id:version)" if no entity name.
+        /// For dead entities: "[WorldName] Entity (id:version) [DEAD]"
         /// </summary>
         public string GetEntityDebugString(int entityId)
         {
@@ -129,24 +130,41 @@ namespace UnsafeEcs.Core.Entities
             if (entityId >= 0 && entityId < entities.Length)
                 entityVersion = entities.Ptr[entityId].version;
 
+            // Check if entity is dead
+            var isDead = entityId < 0 || entityId >= entities.Length || deadEntities.Ptr[entityId];
+            var deadSuffix = isDead ? " [DEAD]" : "";
+
+            // Build base entity string for fallback
+            var baseString = $"[{worldName}] Entity ({entityId}:{entityVersion}){deadSuffix}";
+
+            // Don't try to get name for dead entities - components are already removed
+            if (isDead)
+                return baseString;
+
             // Try to get EntityName component
             var entityNameTypeIndex = TypeManager.GetComponentTypeIndex<EntityName>();
-            if (entityNameTypeIndex < chunks.Length)
-            {
-                var entityNameChunk = chunks.Ptr[entityNameTypeIndex].AsComponentChunk();
-                if (entityNameChunk != null && entityNameChunk->HasComponent(entityId))
-                {
-                    var namePtr = entityNameChunk->GetComponentPtr(entityId);
-                    if (namePtr != null)
-                    {
-                        var entityName = UnsafeUtility.AsRef<EntityName>(namePtr);
-                        if (entityName.Value.Length > 0)
-                            return $"[{worldName}] {entityName.Value} ({entityId}:{entityVersion})";
-                    }
-                }
-            }
+            if (entityNameTypeIndex >= chunks.Length)
+                return baseString;
 
-            return $"[{worldName}] Entity ({entityId}:{entityVersion})";
+            var chunkUnion = chunks.Ptr[entityNameTypeIndex];
+            if (!chunkUnion.IsValid || chunkUnion.isBuffer)
+                return baseString;
+
+            var entityNameChunk = chunkUnion.AsComponentChunk();
+            if (entityNameChunk == null)
+                return baseString;
+
+            if (!entityNameChunk->HasComponent(entityId))
+                return baseString;
+
+            var namePtr = entityNameChunk->GetComponentPtr(entityId);
+            if (namePtr == null)
+                return baseString;
+
+            var entityName = UnsafeUtility.AsRef<EntityName>(namePtr);
+            return entityName.Value.Length > 0
+                ? $"[{worldName}] {entityName.Value} ({entityId}:{entityVersion})"
+                : baseString;
         }
 #endif
     }

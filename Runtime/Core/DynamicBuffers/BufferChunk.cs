@@ -223,35 +223,9 @@ namespace UnsafeEcs.Core.DynamicBuffers
         /// </summary>
         public string GetEntityDebugString(int entityId)
         {
-            if (managerPtr == null)
-                return $"[?] Entity ({entityId}:?)";
-
-            // Get world name
-            var worldName = managerPtr->world?.Name ?? "Unknown";
-
-            // Get entity version
-            uint entityVersion = 0;
-            if (entityId >= 0 && entityId < managerPtr->entities.Length)
-                entityVersion = managerPtr->entities.Ptr[entityId].version;
-
-            // Try to get EntityName component
-            var entityNameTypeIndex = TypeManager.GetComponentTypeIndex<EntityName>();
-            if (entityNameTypeIndex >= managerPtr->chunks.Length)
-                return $"[{worldName}] Entity ({entityId}:{entityVersion})";
-
-            var entityNameChunk = managerPtr->chunks.Ptr[entityNameTypeIndex].AsComponentChunk();
-            if (entityNameChunk == null || !entityNameChunk->HasComponent(entityId))
-                return $"[{worldName}] Entity ({entityId}:{entityVersion})";
-
-            var namePtr = entityNameChunk->GetComponentPtr(entityId);
-            if (namePtr == null)
-                return $"[{worldName}] Entity ({entityId}:{entityVersion})";
-
-            var entityName = UnsafeUtility.AsRef<EntityName>(namePtr);
-            if (entityName.Value.Length > 0)
-                return $"[{worldName}] {entityName.Value} ({entityId}:{entityVersion})";
-
-            return $"[{worldName}] Entity ({entityId}:{entityVersion})";
+            return managerPtr != null
+                ? managerPtr->GetEntityDebugString(entityId)
+                : $"[?] Entity ({entityId}:?)";
         }
 #endif
     }
