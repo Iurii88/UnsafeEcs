@@ -247,6 +247,8 @@ namespace UnsafeEcs.Editor
 
             if (m_selectedEntityId < 0)
             {
+                // Use a label with fixed height to establish the layout before FlexibleSpace
+                GUILayout.Label("", GUILayout.Height(0));
                 GUILayout.FlexibleSpace();
                 var style = new GUIStyle(EditorStyles.centeredGreyMiniLabel) { fontSize = 12 };
                 EditorGUILayout.LabelField("Select an entity to view components", style);
