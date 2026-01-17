@@ -54,11 +54,32 @@ namespace UnsafeEcs.Core
         [BurstCompile]
         private static void ThrowNoComponentBurst(int entityId, int typeIndex)
         {
-            FixedString128Bytes msg = "Entity ";
+            // Burst-compatible: build message using Unicode.Rune for characters
+            FixedString128Bytes msg = default;
+            // "Entity "
+            msg.Append((Unicode.Rune)'E');
+            msg.Append((Unicode.Rune)'n');
+            msg.Append((Unicode.Rune)'t');
+            msg.Append((Unicode.Rune)'i');
+            msg.Append((Unicode.Rune)'t');
+            msg.Append((Unicode.Rune)'y');
+            msg.Append((Unicode.Rune)' ');
             msg.Append(entityId);
-            msg.Append(" does not have component (typeIndex=");
+            // " no component idx="
+            msg.Append((Unicode.Rune)' ');
+            msg.Append((Unicode.Rune)'n');
+            msg.Append((Unicode.Rune)'o');
+            msg.Append((Unicode.Rune)' ');
+            msg.Append((Unicode.Rune)'c');
+            msg.Append((Unicode.Rune)'o');
+            msg.Append((Unicode.Rune)'m');
+            msg.Append((Unicode.Rune)'p');
+            msg.Append((Unicode.Rune)' ');
+            msg.Append((Unicode.Rune)'i');
+            msg.Append((Unicode.Rune)'d');
+            msg.Append((Unicode.Rune)'x');
+            msg.Append((Unicode.Rune)'=');
             msg.Append(typeIndex);
-            msg.Append(')');
 
             throw new InvalidOperationException(msg.ToString());
         }
@@ -66,11 +87,30 @@ namespace UnsafeEcs.Core
         [BurstCompile]
         private static void ThrowNoBufferBurst(int entityId, int typeIndex)
         {
-            FixedString128Bytes msg = "Entity ";
+            FixedString128Bytes msg = default;
+            // "Entity "
+            msg.Append((Unicode.Rune)'E');
+            msg.Append((Unicode.Rune)'n');
+            msg.Append((Unicode.Rune)'t');
+            msg.Append((Unicode.Rune)'i');
+            msg.Append((Unicode.Rune)'t');
+            msg.Append((Unicode.Rune)'y');
+            msg.Append((Unicode.Rune)' ');
             msg.Append(entityId);
-            msg.Append(" does not have buffer (typeIndex=");
+            // " no buffer idx="
+            msg.Append((Unicode.Rune)' ');
+            msg.Append((Unicode.Rune)'n');
+            msg.Append((Unicode.Rune)'o');
+            msg.Append((Unicode.Rune)' ');
+            msg.Append((Unicode.Rune)'b');
+            msg.Append((Unicode.Rune)'u');
+            msg.Append((Unicode.Rune)'f');
+            msg.Append((Unicode.Rune)' ');
+            msg.Append((Unicode.Rune)'i');
+            msg.Append((Unicode.Rune)'d');
+            msg.Append((Unicode.Rune)'x');
+            msg.Append((Unicode.Rune)'=');
             msg.Append(typeIndex);
-            msg.Append(')');
 
             throw new InvalidOperationException(msg.ToString());
         }
@@ -78,9 +118,22 @@ namespace UnsafeEcs.Core
         [BurstCompile]
         private static void ThrowEntityNotAliveBurst(int entityId)
         {
-            FixedString128Bytes msg = "Entity ";
+            FixedString128Bytes msg = default;
+            // "Entity "
+            msg.Append((Unicode.Rune)'E');
+            msg.Append((Unicode.Rune)'n');
+            msg.Append((Unicode.Rune)'t');
+            msg.Append((Unicode.Rune)'i');
+            msg.Append((Unicode.Rune)'t');
+            msg.Append((Unicode.Rune)'y');
+            msg.Append((Unicode.Rune)' ');
             msg.Append(entityId);
-            msg.Append(" is not alive");
+            // " dead"
+            msg.Append((Unicode.Rune)' ');
+            msg.Append((Unicode.Rune)'d');
+            msg.Append((Unicode.Rune)'e');
+            msg.Append((Unicode.Rune)'a');
+            msg.Append((Unicode.Rune)'d');
 
             throw new InvalidOperationException(msg.ToString());
         }
