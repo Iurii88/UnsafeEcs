@@ -44,7 +44,7 @@ namespace UnsafeEcs.Core.Entities
 
         public void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
@@ -68,26 +68,26 @@ namespace UnsafeEcs.Core.Entities
 
         public ref T GetComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (typeIndex >= chunks.Length)
                 throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have component {typeof(T).Name}");
 #endif
 
             var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (chunk == null)
                 throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have component {typeof(T).Name}");
 #endif
 
             var componentPtr = chunk->GetComponentPtr(entity.id);
 
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (componentPtr == null)
                 throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have component {typeof(T).Name}");
 #endif
@@ -97,7 +97,7 @@ namespace UnsafeEcs.Core.Entities
 
         public ref T GetOrAddComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
@@ -117,7 +117,7 @@ namespace UnsafeEcs.Core.Entities
 
         public ref T GetOrAddComponent<T>(Entity entity, T defaultValue) where T : unmanaged, IComponent
         {
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
@@ -136,7 +136,7 @@ namespace UnsafeEcs.Core.Entities
 
         public bool HasComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
                 return false;
 #endif
@@ -153,7 +153,7 @@ namespace UnsafeEcs.Core.Entities
         {
             component = default;
 
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
                 return false;
 #endif
@@ -181,7 +181,7 @@ namespace UnsafeEcs.Core.Entities
 
         public void SetComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (!IsEntityAlive(entity))
                 throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif

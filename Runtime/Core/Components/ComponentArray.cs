@@ -23,14 +23,14 @@ namespace UnsafeEcs.Core.Components
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T Get(int entityId)
         {
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             // Check bounds first to avoid memory access violation
             if (entityId > m_chunkPtr->maxEntityId)
                 throw new InvalidOperationException($"{m_chunkPtr->GetEntityDebugString(entityId)} does not have component {typeof(T).Name}");
 #endif
 
             var index = m_chunkPtr->componentIndices[entityId];
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
             if (index < 0)
                 throw new InvalidOperationException($"{m_chunkPtr->GetEntityDebugString(entityId)} does not have component {typeof(T).Name}");
 #endif

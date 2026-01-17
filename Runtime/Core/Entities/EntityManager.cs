@@ -105,10 +105,10 @@ namespace UnsafeEcs.Core.Entities
             return !deadEntities.Ptr[entity.id];
         }
 
-#if UNSAFE_ECS_VERBOSE_ERRORS
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
         /// <summary>
-        /// Gets a debug string for an entity, including EntityName if available.
-        /// Format: "EntityName (id:version)" or "Entity (id:version)" if no name.
+        /// Gets a debug string for an entity, including EntityName and World name if available.
+        /// Format: "[WorldName] EntityName (id:version)" or "[WorldName] Entity (id:version)" if no entity name.
         /// </summary>
         public string GetEntityDebugString(Entity entity)
         {
@@ -116,15 +116,18 @@ namespace UnsafeEcs.Core.Entities
         }
 
         /// <summary>
-        /// Gets a debug string for an entity by id, including EntityName if available.
-        /// Format: "EntityName (id:version)" or "Entity (id:version)" if no name.
+        /// Gets a debug string for an entity by id, including EntityName and World name if available.
+        /// Format: "[WorldName] EntityName (id:version)" or "[WorldName] Entity (id:version)" if no entity name.
         /// </summary>
         public string GetEntityDebugString(int entityId)
         {
+            // Get world name
+            var worldName = world?.Name ?? "Unknown";
+
             // Get entity version
-            uint version = 0;
+            uint entityVersion = 0;
             if (entityId >= 0 && entityId < entities.Length)
-                version = entities.Ptr[entityId].version;
+                entityVersion = entities.Ptr[entityId].version;
 
             // Try to get EntityName component
             var entityNameTypeIndex = TypeManager.GetComponentTypeIndex<EntityName>();
@@ -138,12 +141,12 @@ namespace UnsafeEcs.Core.Entities
                     {
                         var entityName = UnsafeUtility.AsRef<EntityName>(namePtr);
                         if (entityName.Value.Length > 0)
-                            return $"{entityName.Value} ({entityId}:{version})";
+                            return $"[{worldName}] {entityName.Value} ({entityId}:{entityVersion})";
                     }
                 }
             }
 
-            return $"Entity ({entityId}:{version})";
+            return $"[{worldName}] Entity ({entityId}:{entityVersion})";
         }
 #endif
     }

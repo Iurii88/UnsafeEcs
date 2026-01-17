@@ -216,15 +216,18 @@ namespace UnsafeEcs.Core.DynamicBuffers
             return entityId <= maxEntityId && bufferIndices[entityId] >= 0;
         }
 
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS || UNITY_EDITOR
         /// <summary>
-        /// Gets a debug string for an entity, including EntityName if available.
-        /// Format: "EntityName (id:version)" or "Entity (id:version)" if no name.
+        /// Gets a debug string for an entity, including EntityName and World name if available.
+        /// Format: "[WorldName] EntityName (id:version)" or "[WorldName] Entity (id:version)" if no entity name.
         /// </summary>
         public string GetEntityDebugString(int entityId)
         {
             if (managerPtr == null)
-                return $"Entity ({entityId}:?)";
+                return $"[?] Entity ({entityId}:?)";
+
+            // Get world name
+            var worldName = managerPtr->world?.Name ?? "Unknown";
 
             // Get entity version
             uint entityVersion = 0;
@@ -234,21 +237,21 @@ namespace UnsafeEcs.Core.DynamicBuffers
             // Try to get EntityName component
             var entityNameTypeIndex = TypeManager.GetComponentTypeIndex<EntityName>();
             if (entityNameTypeIndex >= managerPtr->chunks.Length)
-                return $"Entity ({entityId}:{entityVersion})";
-            
+                return $"[{worldName}] Entity ({entityId}:{entityVersion})";
+
             var entityNameChunk = managerPtr->chunks.Ptr[entityNameTypeIndex].AsComponentChunk();
             if (entityNameChunk == null || !entityNameChunk->HasComponent(entityId))
-                return $"Entity ({entityId}:{entityVersion})";
-            
+                return $"[{worldName}] Entity ({entityId}:{entityVersion})";
+
             var namePtr = entityNameChunk->GetComponentPtr(entityId);
             if (namePtr == null)
-                return $"Entity ({entityId}:{entityVersion})";
-            
+                return $"[{worldName}] Entity ({entityId}:{entityVersion})";
+
             var entityName = UnsafeUtility.AsRef<EntityName>(namePtr);
             if (entityName.Value.Length > 0)
-                return $"{entityName.Value} ({entityId}:{entityVersion})";
+                return $"[{worldName}] {entityName.Value} ({entityId}:{entityVersion})";
 
-            return $"Entity ({entityId}:{entityVersion})";
+            return $"[{worldName}] Entity ({entityId}:{entityVersion})";
         }
 #endif
     }
