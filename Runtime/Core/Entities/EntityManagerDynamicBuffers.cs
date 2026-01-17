@@ -54,21 +54,31 @@ namespace UnsafeEcs.Core.Entities
 
         public DynamicBuffer<T> GetBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (typeIndex >= chunks.Length)
-                throw new InvalidOperationException($"Entity {entity.id} does not have buffer {typeof(T).Name}");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have buffer {typeof(T).Name}");
+#endif
 
             var chunk = chunks.Ptr[typeIndex].AsBufferChunk();
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (chunk == null)
-                throw new InvalidOperationException($"Entity {entity.id} does not have buffer {typeof(T).Name}");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have buffer {typeof(T).Name}");
+#endif
 
             if (!chunk->TryGetBufferIndex(entity.id, out var index))
-                throw new InvalidOperationException($"Entity {entity.id} does not have buffer {typeof(T).Name}");
+            {
+#if UNSAFE_ECS_VERBOSE_ERRORS
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have buffer {typeof(T).Name}");
+#else
+                return default;
+#endif
+            }
 
             var header = (BufferHeader*)(chunk->ptr + index * chunk->headerSize);
             return new DynamicBuffer<T>(header);
@@ -76,9 +86,9 @@ namespace UnsafeEcs.Core.Entities
 
         public void RemoveBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
             if (typeIndex >= chunks.Length)
@@ -140,9 +150,9 @@ namespace UnsafeEcs.Core.Entities
 
         public DynamicBuffer<T> GetOrCreateBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             if (TryGetBuffer<T>(entity, out var buffer))
                 return buffer;
@@ -152,9 +162,9 @@ namespace UnsafeEcs.Core.Entities
 
         public DynamicBuffer<T> SetBuffer<T>(Entity entity, T[] data) where T : unmanaged, IBufferElement
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var buffer = GetOrCreateBuffer<T>(entity);
             buffer.Clear();
@@ -164,9 +174,9 @@ namespace UnsafeEcs.Core.Entities
 
         public DynamicBuffer<T> AppendToBuffer<T>(Entity entity, T[] data) where T : unmanaged, IBufferElement
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var buffer = GetOrCreateBuffer<T>(entity);
 
@@ -195,9 +205,9 @@ namespace UnsafeEcs.Core.Entities
 
         public ReadOnlyDynamicBuffer<T> GetBufferReadOnly<T>(Entity entity) where T : unmanaged, IBufferElement
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var buffer = GetBuffer<T>(entity);
             return new ReadOnlyDynamicBuffer<T>(buffer);

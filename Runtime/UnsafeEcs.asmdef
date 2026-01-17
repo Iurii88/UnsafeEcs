@@ -13,6 +13,12 @@
   "precompiledReferences": [],
   "autoReferenced": true,
   "defineConstraints": [],
-  "versionDefines": [],
+  "versionDefines": [
+    {
+      "name": "Unity",
+      "expression": "",
+      "define": "UNSAFE_ECS_VERBOSE_ERRORS"
+    }
+  ],
   "noEngineReferences": false
 }

@@ -44,9 +44,9 @@ namespace UnsafeEcs.Core.Entities
 
         public void RemoveComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
 
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
@@ -68,32 +68,38 @@ namespace UnsafeEcs.Core.Entities
 
         public ref T GetComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (typeIndex >= chunks.Length)
-                throw new InvalidOperationException($"Entity {entity.id} does not have component {typeof(T).Name}");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have component {typeof(T).Name}");
+#endif
 
             var chunk = chunks.Ptr[typeIndex].AsComponentChunk();
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (chunk == null)
-                throw new InvalidOperationException($"Entity {entity.id} does not have component {typeof(T).Name}");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have component {typeof(T).Name}");
+#endif
 
             var componentPtr = chunk->GetComponentPtr(entity.id);
 
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (componentPtr == null)
-                throw new InvalidOperationException($"Entity {entity.id} does not have component {typeof(T).Name}");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} does not have component {typeof(T).Name}");
+#endif
 
             return ref UnsafeUtility.AsRef<T>(componentPtr);
         }
 
         public ref T GetOrAddComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
@@ -111,9 +117,9 @@ namespace UnsafeEcs.Core.Entities
 
         public ref T GetOrAddComponent<T>(Entity entity, T defaultValue) where T : unmanaged, IComponent
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 
@@ -130,7 +136,7 @@ namespace UnsafeEcs.Core.Entities
 
         public bool HasComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
                 return false;
 #endif
@@ -147,7 +153,7 @@ namespace UnsafeEcs.Core.Entities
         {
             component = default;
 
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
                 return false;
 #endif
@@ -175,9 +181,9 @@ namespace UnsafeEcs.Core.Entities
 
         public void SetComponent<T>(Entity entity, T component) where T : unmanaged, IComponent
         {
-#if DEBUG
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (!IsEntityAlive(entity))
-                throw new InvalidOperationException($"Entity {entity} is not alive");
+                throw new InvalidOperationException($"{GetEntityDebugString(entity)} is not alive");
 #endif
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
 

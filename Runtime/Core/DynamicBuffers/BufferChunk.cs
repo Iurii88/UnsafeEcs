@@ -2,6 +2,7 @@
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
+using UnsafeEcs.Core.Components;
 using UnsafeEcs.Core.Entities;
 
 namespace UnsafeEcs.Core.DynamicBuffers
@@ -214,5 +215,41 @@ namespace UnsafeEcs.Core.DynamicBuffers
         {
             return entityId <= maxEntityId && bufferIndices[entityId] >= 0;
         }
+
+#if DEBUG
+        /// <summary>
+        /// Gets a debug string for an entity, including EntityName if available.
+        /// Format: "EntityName (id:version)" or "Entity (id:version)" if no name.
+        /// </summary>
+        public string GetEntityDebugString(int entityId)
+        {
+            if (managerPtr == null)
+                return $"Entity ({entityId}:?)";
+
+            // Get entity version
+            uint entityVersion = 0;
+            if (entityId >= 0 && entityId < managerPtr->entities.Length)
+                entityVersion = managerPtr->entities.Ptr[entityId].version;
+
+            // Try to get EntityName component
+            var entityNameTypeIndex = TypeManager.GetComponentTypeIndex<EntityName>();
+            if (entityNameTypeIndex >= managerPtr->chunks.Length)
+                return $"Entity ({entityId}:{entityVersion})";
+            
+            var entityNameChunk = managerPtr->chunks.Ptr[entityNameTypeIndex].AsComponentChunk();
+            if (entityNameChunk == null || !entityNameChunk->HasComponent(entityId))
+                return $"Entity ({entityId}:{entityVersion})";
+            
+            var namePtr = entityNameChunk->GetComponentPtr(entityId);
+            if (namePtr == null)
+                return $"Entity ({entityId}:{entityVersion})";
+            
+            var entityName = UnsafeUtility.AsRef<EntityName>(namePtr);
+            if (entityName.Value.Length > 0)
+                return $"{entityName.Value} ({entityId}:{entityVersion})";
+
+            return $"Entity ({entityId}:{entityVersion})";
+        }
+#endif
     }
 }

@@ -202,5 +202,41 @@ namespace UnsafeEcs.Core.Components
         {
             return entityId <= maxEntityId && componentIndices[entityId] >= 0;
         }
+
+#if UNSAFE_ECS_VERBOSE_ERRORS
+        /// <summary>
+        /// Gets a debug string for an entity, including EntityName if available.
+        /// Format: "EntityName (id:version)" or "Entity (id:version)" if no name.
+        /// </summary>
+        public string GetEntityDebugString(int entityId)
+        {
+            if (managerPtr == null)
+                return $"Entity ({entityId}:?)";
+
+            // Get entity version
+            uint version = 0;
+            if (entityId >= 0 && entityId < managerPtr->entities.Length)
+                version = managerPtr->entities.Ptr[entityId].version;
+
+            // Try to get EntityName component
+            var entityNameTypeIndex = TypeManager.GetComponentTypeIndex<EntityName>();
+            if (entityNameTypeIndex < managerPtr->chunks.Length)
+            {
+                var entityNameChunk = managerPtr->chunks.Ptr[entityNameTypeIndex].AsComponentChunk();
+                if (entityNameChunk != null && entityNameChunk->HasComponent(entityId))
+                {
+                    var namePtr = entityNameChunk->GetComponentPtr(entityId);
+                    if (namePtr != null)
+                    {
+                        var entityName = Unity.Collections.LowLevel.Unsafe.UnsafeUtility.AsRef<EntityName>(namePtr);
+                        if (entityName.Value.Length > 0)
+                            return $"{entityName.Value} ({entityId}:{version})";
+                    }
+                }
+            }
+
+            return $"Entity ({entityId}:{version})";
+        }
+#endif
     }
 }

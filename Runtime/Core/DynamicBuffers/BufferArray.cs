@@ -34,12 +34,16 @@ namespace UnsafeEcs.Core.DynamicBuffers
             if (m_chunk == null)
                 throw new InvalidOperationException("BufferArray has not been initialized");
 
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (entity.id > m_chunk->maxEntityId)
-                throw new InvalidOperationException($"Entity {entity.id} does not have buffer {typeof(T).Name}");
+                throw new InvalidOperationException($"{m_chunk->GetEntityDebugString(entity.id)} does not have buffer {typeof(T).Name}");
+#endif
 
             var index = m_chunk->bufferIndices[entity.id];
+#if UNSAFE_ECS_VERBOSE_ERRORS
             if (index < 0)
-                throw new InvalidOperationException($"Entity {entity.id} does not have buffer {typeof(T).Name}");
+                throw new InvalidOperationException($"{m_chunk->GetEntityDebugString(entity.id)} does not have buffer {typeof(T).Name}");
+#endif
 
             return this[index];
         }
