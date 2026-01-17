@@ -247,9 +247,10 @@ namespace UnsafeEcs.Editor
 
             if (m_selectedEntityId < 0)
             {
-                GUILayout.Space(20);
+                GUILayout.FlexibleSpace();
                 var style = new GUIStyle(EditorStyles.centeredGreyMiniLabel) { fontSize = 12 };
                 EditorGUILayout.LabelField("Select an entity to view components", style);
+                GUILayout.FlexibleSpace();
             }
             else
             {
@@ -285,22 +286,20 @@ namespace UnsafeEcs.Editor
             GUILayout.Space(12);
 
             var headerStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 16 };
-            GUILayout.Label(entity.DisplayName, headerStyle);
-
             if (!string.IsNullOrEmpty(entity.Name))
             {
-                var idStyle = new GUIStyle(EditorStyles.miniLabel)
-                {
-                    normal = { textColor = new Color(0.5f, 0.5f, 0.5f) }
-                };
-                GUILayout.Label($"(id: {entity.Id})", idStyle);
+                GUILayout.Label(entity.Name, headerStyle);
+            }
+            else
+            {
+                GUILayout.Label("Entity", headerStyle);
             }
 
-            var versionStyle = new GUIStyle(EditorStyles.miniLabel)
+            var idStyle = new GUIStyle(EditorStyles.miniLabel)
             {
                 normal = { textColor = new Color(0.5f, 0.5f, 0.5f) }
             };
-            GUILayout.Label($"v{entity.Version}", versionStyle);
+            GUILayout.Label($"({entity.Id}:{entity.Version})", idStyle);
 
             GUILayout.FlexibleSpace();
             EditorGUILayout.EndHorizontal();
@@ -706,7 +705,12 @@ namespace UnsafeEcs.Editor
                 fontStyle = isSelected ? FontStyle.Bold : FontStyle.Normal,
                 normal = { textColor = isSelected ? Color.white : new Color(0.85f, 0.85f, 0.85f) }
             };
-            GUILayout.Label($"{entity.DisplayName}:{entity.Version}", labelStyle);
+
+            // Show name first (if present), then id:version in parentheses
+            var displayText = string.IsNullOrEmpty(entity.Name)
+                ? $"Entity ({entity.Id}:{entity.Version})"
+                : $"{entity.Name} ({entity.Id}:{entity.Version})";
+            GUILayout.Label(displayText, labelStyle);
 
             GUILayout.FlexibleSpace();
 
@@ -769,14 +773,27 @@ namespace UnsafeEcs.Editor
             if (m_selectedWorld == null)
                 return;
 
+            ref var entityManager = ref m_selectedWorld.EntityManager;
+
+            // Check if EntityManager is properly initialized
+            if (!entityManager.chunks.IsCreated || !entityManager.entities.IsCreated)
+                return;
+
             // Create or refresh the data reader
             if (m_dataReader == null || m_dataReader.World != m_selectedWorld)
                 m_dataReader = new ComponentDataReader(m_selectedWorld);
 
-            ref var entityManager = ref m_selectedWorld.EntityManager;
-
-            // Get EntityName component array for name lookup
-            var entityNameArray = entityManager.GetComponentArray<EntityName>();
+            // Get EntityName component array for name lookup (may be null if not used yet)
+            ComponentArray<EntityName> entityNameArray = default;
+            var hasEntityNameChunk = TypeManager.TypeToIndex.Data.IsCreated &&
+                                     TypeManager.TypeToIndex.Data.TryGetValue(
+                                         Unity.Burst.BurstRuntime.GetHashCode64<EntityName>(), out var entityNameIndex) &&
+                                     entityNameIndex < entityManager.chunks.Length &&
+                                     entityManager.chunks.Ptr[entityNameIndex].IsValid;
+            if (hasEntityNameChunk)
+            {
+                entityNameArray = entityManager.GetComponentArray<EntityName>();
+            }
 
             for (var i = 0; i < entityManager.entities.m_length; i++)
             {
@@ -802,7 +819,7 @@ namespace UnsafeEcs.Editor
 
                 // Try to get entity name from EntityName component
                 string entityName = null;
-                if (entityNameArray.TryGet(entity, out var nameComponent))
+                if (hasEntityNameChunk && entityNameArray.TryGet(entity, out var nameComponent))
                 {
                     entityName = nameComponent.Value.ToString();
                 }

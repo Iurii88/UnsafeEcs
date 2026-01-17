@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Unity.Collections;
 using UnsafeEcs.Core.Components;
 
 namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
@@ -9,7 +10,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         [Test]
         public void EntityName_CreateFromString_StoresValue()
         {
-            var name = new EntityName("TestEntity");
+            var name = EntityName.FromString("TestEntity");
             Assert.AreEqual("TestEntity", name.Value.ToString());
         }
 
@@ -23,7 +24,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         [Test]
         public void EntityName_ImplicitConversionToString_Works()
         {
-            var name = new EntityName("ConvertMe");
+            EntityName name = "ConvertMe";
             string str = name;
             Assert.AreEqual("ConvertMe", str);
         }
@@ -31,15 +32,31 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         [Test]
         public void EntityName_ToString_ReturnsValue()
         {
-            var name = new EntityName("ToStringTest");
+            EntityName name = "ToStringTest";
             Assert.AreEqual("ToStringTest", name.ToString());
+        }
+
+        [Test]
+        public void EntityName_CreateFromFixedString32_Works()
+        {
+            var fixedStr = new FixedString32Bytes("FixedString32");
+            var name = new EntityName(fixedStr);
+            Assert.AreEqual("FixedString32", name.Value.ToString());
+        }
+
+        [Test]
+        public void EntityName_CreateFromFixedString64_Works()
+        {
+            var fixedStr = new FixedString64Bytes("FixedString64");
+            var name = new EntityName(fixedStr);
+            Assert.AreEqual("FixedString64", name.Value.ToString());
         }
 
         [Test]
         public void EntityName_AddToEntity_CanBeRetrieved()
         {
             var entity = entityManager.CreateEntity();
-            entityManager.AddComponent(entity, new EntityName("Player"));
+            entityManager.AddComponent<EntityName>(entity, "Player");
 
             var retrievedName = entityManager.GetComponent<EntityName>(entity);
             Assert.AreEqual("Player", retrievedName.Value.ToString());
@@ -49,11 +66,11 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         public void EntityName_ModifyViaComponentArray_Works()
         {
             var entity = entityManager.CreateEntity();
-            entityManager.AddComponent(entity, new EntityName("Original"));
+            entityManager.AddComponent<EntityName>(entity, "Original");
 
             var array = entityManager.GetComponentArray<EntityName>();
             ref var nameRef = ref array.Get(entity);
-            nameRef = new EntityName("Modified");
+            nameRef = "Modified";
 
             Assert.AreEqual("Modified", entityManager.GetComponent<EntityName>(entity).Value.ToString());
         }
@@ -65,9 +82,9 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
             var entity2 = entityManager.CreateEntity();
             var entity3 = entityManager.CreateEntity();
 
-            entityManager.AddComponent(entity1, new EntityName("Entity_1"));
-            entityManager.AddComponent(entity2, new EntityName("Entity_2"));
-            entityManager.AddComponent(entity3, new EntityName("Entity_3"));
+            entityManager.AddComponent<EntityName>(entity1, "Entity_1");
+            entityManager.AddComponent<EntityName>(entity2, "Entity_2");
+            entityManager.AddComponent<EntityName>(entity3, "Entity_3");
 
             Assert.AreEqual("Entity_1", entityManager.GetComponent<EntityName>(entity1).Value.ToString());
             Assert.AreEqual("Entity_2", entityManager.GetComponent<EntityName>(entity2).Value.ToString());
@@ -90,7 +107,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         public void EntityName_TryGet_ReturnsTrueWhenPresent()
         {
             var entity = entityManager.CreateEntity();
-            entityManager.AddComponent(entity, new EntityName("Present"));
+            entityManager.AddComponent<EntityName>(entity, "Present");
 
             var array = entityManager.GetComponentArray<EntityName>();
             var result = array.TryGet(entity, out var name);
@@ -112,7 +129,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         public void EntityName_Has_ReturnsTrueWhenPresent()
         {
             var entity = entityManager.CreateEntity();
-            entityManager.AddComponent(entity, new EntityName("HasName"));
+            entityManager.AddComponent<EntityName>(entity, "HasName");
 
             var array = entityManager.GetComponentArray<EntityName>();
             Assert.IsTrue(array.Has(entity));
@@ -122,7 +139,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         public void EntityName_Remove_ComponentNoLongerPresent()
         {
             var entity = entityManager.CreateEntity();
-            entityManager.AddComponent(entity, new EntityName("ToRemove"));
+            entityManager.AddComponent<EntityName>(entity, "ToRemove");
 
             Assert.IsTrue(entityManager.HasComponent<EntityName>(entity));
 
@@ -138,7 +155,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
 
             // FixedString64Bytes can hold up to 61 UTF-8 characters (3 bytes for length header)
             var longName = new string('A', 100);
-            entityManager.AddComponent(entity, new EntityName(longName));
+            entityManager.AddComponent(entity, EntityName.FromString(longName));
 
             var retrieved = entityManager.GetComponent<EntityName>(entity);
             // Should be truncated to MaxLength without throwing
@@ -150,7 +167,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         public void EntityName_EmptyString_Works()
         {
             var entity = entityManager.CreateEntity();
-            entityManager.AddComponent(entity, new EntityName(""));
+            entityManager.AddComponent<EntityName>(entity, "");
 
             var retrieved = entityManager.GetComponent<EntityName>(entity);
             Assert.AreEqual("", retrieved.Value.ToString());
@@ -160,7 +177,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         public void EntityName_SpecialCharacters_Works()
         {
             var entity = entityManager.CreateEntity();
-            entityManager.AddComponent(entity, new EntityName("Test_Entity-01 (Clone)"));
+            entityManager.AddComponent<EntityName>(entity, "Test_Entity-01 (Clone)");
 
             var retrieved = entityManager.GetComponent<EntityName>(entity);
             Assert.AreEqual("Test_Entity-01 (Clone)", retrieved.Value.ToString());
@@ -172,7 +189,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
             var entity = entityManager.CreateEntity();
 
             var array = entityManager.GetComponentArray<EntityName>();
-            var name = new EntityName("ArrayAdded");
+            EntityName name = "ArrayAdded";
             array.Add(entity, ref name);
 
             Assert.IsTrue(entityManager.HasComponent<EntityName>(entity));

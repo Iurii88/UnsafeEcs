@@ -1,4 +1,4 @@
-using System;
+using Unity.Burst;
 using Unity.Collections;
 
 namespace UnsafeEcs.Core.Components
@@ -14,15 +14,27 @@ namespace UnsafeEcs.Core.Components
 
         public FixedString64Bytes Value;
 
-        public EntityName(string name)
+        /// <summary>
+        /// Creates EntityName from a managed string. NOT Burst-compatible.
+        /// For Burst jobs, use the FixedString constructors instead.
+        /// </summary>
+        [BurstDiscard]
+        public static EntityName FromString(string name)
         {
-            Value = default;
+            var result = new EntityName();
             if (string.IsNullOrEmpty(name))
-                return;
+                return result;
 
             // Truncate if too long to avoid exception
             var truncated = name.Length > MaxLength ? name.Substring(0, MaxLength) : name;
-            Value = new FixedString64Bytes(truncated);
+            result.Value = new FixedString64Bytes(truncated);
+            return result;
+        }
+
+        public EntityName(FixedString32Bytes name)
+        {
+            Value = default;
+            Value.Append(name);
         }
 
         public EntityName(FixedString64Bytes name)
@@ -30,9 +42,22 @@ namespace UnsafeEcs.Core.Components
             Value = name;
         }
 
+        public EntityName(FixedString128Bytes name)
+        {
+            Value = default;
+            // Truncate by copying only what fits
+            foreach (var b in name)
+            {
+                if (Value.Length >= MaxLength) break;
+                Value.Append(b);
+            }
+        }
+
         public override string ToString() => Value.ToString();
 
-        public static implicit operator EntityName(string name) => new(name);
+        [BurstDiscard]
+        public static implicit operator EntityName(string name) => FromString(name);
+
         public static implicit operator string(EntityName name) => name.Value.ToString();
     }
 }
