@@ -174,14 +174,22 @@ namespace UnsafeEcs.Core.DynamicBuffers
 
             // Resize buffer headers array
             var newPtr = (byte*)UnsafeUtility.Malloc(newCapacity * headerSize, UnsafeUtility.AlignOf<BufferHeader>(), Allocator.Persistent);
-            UnsafeUtility.MemCpy(newPtr, ptr, length * headerSize);
-            UnsafeUtility.Free(ptr, Allocator.Persistent);
+            if (ptr != null)
+            {
+                if (length > 0)
+                    UnsafeUtility.MemCpy(newPtr, ptr, length * headerSize);
+                UnsafeUtility.Free(ptr, Allocator.Persistent);
+            }
             ptr = newPtr;
 
             // Resize entityIds array
             var newEntityIds = (int*)UnsafeUtility.Malloc(newCapacity * sizeof(int), UnsafeUtility.AlignOf<int>(), Allocator.Persistent);
-            UnsafeUtility.MemCpy(newEntityIds, entityIds, length * sizeof(int));
-            UnsafeUtility.Free(entityIds, Allocator.Persistent);
+            if (entityIds != null)
+            {
+                if (length > 0)
+                    UnsafeUtility.MemCpy(newEntityIds, entityIds, length * sizeof(int));
+                UnsafeUtility.Free(entityIds, Allocator.Persistent);
+            }
             entityIds = newEntityIds;
 
             capacity = newCapacity;

@@ -33,17 +33,27 @@ namespace UnsafeEcs.Core.Components
             maxEntityId = -1;
             version = 0;
 
-            // Allocate component data buffer
-            ptr = UnsafeUtility.Malloc(capacity * componentSize, 16, Allocator.Persistent);
+            // Only allocate if capacity > 0, otherwise leave pointers null
+            if (capacity > 0)
+            {
+                // Allocate component data buffer
+                ptr = UnsafeUtility.Malloc(capacity * componentSize, 16, Allocator.Persistent);
 
-            // Allocate entity ID tracking array
-            entityIds = (int*)UnsafeUtility.Malloc(capacity * sizeof(int), 16, Allocator.Persistent);
+                // Allocate entity ID tracking array
+                entityIds = (int*)UnsafeUtility.Malloc(capacity * sizeof(int), 16, Allocator.Persistent);
+            }
+            else
+            {
+                ptr = null;
+                entityIds = null;
+            }
 
             // Initially allocate a small componentIndices array - will grow as needed
             componentIndices = (int*)UnsafeUtility.Malloc(16 * sizeof(int), 16, Allocator.Persistent);
             // Initialize all indices to -1 (indicating no component for that entity)
             UnsafeUtility.MemSet(componentIndices, 0xFF, 16 * sizeof(int));
         }
+
 
         public void Dispose()
         {
@@ -152,14 +162,22 @@ namespace UnsafeEcs.Core.Components
 
             // Resize component data
             var newPtr = UnsafeUtility.Malloc(newCapacity * componentSize, 16, Allocator.Persistent);
-            UnsafeUtility.MemCpy(newPtr, ptr, length * componentSize);
-            UnsafeUtility.Free(ptr, Allocator.Persistent);
+            if (ptr != null)
+            {
+                if (length > 0)
+                    UnsafeUtility.MemCpy(newPtr, ptr, length * componentSize);
+                UnsafeUtility.Free(ptr, Allocator.Persistent);
+            }
             ptr = newPtr;
 
             // Resize entity ID array
             var newEntityIds = (int*)UnsafeUtility.Malloc(newCapacity * sizeof(int), 16, Allocator.Persistent);
-            UnsafeUtility.MemCpy(newEntityIds, entityIds, length * sizeof(int));
-            UnsafeUtility.Free(entityIds, Allocator.Persistent);
+            if (entityIds != null)
+            {
+                if (length > 0)
+                    UnsafeUtility.MemCpy(newEntityIds, entityIds, length * sizeof(int));
+                UnsafeUtility.Free(entityIds, Allocator.Persistent);
+            }
             entityIds = newEntityIds;
 
             capacity = newCapacity;
