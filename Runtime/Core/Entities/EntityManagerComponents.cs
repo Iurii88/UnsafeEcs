@@ -7,6 +7,30 @@ namespace UnsafeEcs.Core.Entities
 {
     public unsafe partial struct EntityManager
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ComponentChunk* GetComponentChunk(int typeIndex)
+        {
+            return chunks.Ptr[typeIndex].AsComponentChunk();
+        }
+
+        /// <summary>
+        /// Gets a ComponentArray without ensuring chunk exists. Burst-compatible, no allocations.
+        /// Use in jobs when you know the chunk already exists.
+        /// Returns default ComponentArray if chunk doesn't exist.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ComponentArray<T> GetComponentArrayUnsafe<T>(int typeIndex) where T : unmanaged, IComponent
+        {
+            if (typeIndex >= chunks.m_length)
+                return default;
+
+            var chunkUnion = chunks.Ptr + typeIndex;
+            if (chunkUnion->chunkPtr == null || chunkUnion->isBuffer)
+                return default;
+
+            return new ComponentArray<T>((ComponentChunk*)chunkUnion->chunkPtr);
+        }
+
         public void AddComponent<T>(Entity entity) where T : unmanaged, IComponent
         {
             var component = default(T);
@@ -23,6 +47,16 @@ namespace UnsafeEcs.Core.Entities
             // Get the chunk and add the component
             var existingChunk = chunks.Ptr[typeIndex].AsComponentChunk();
             existingChunk->Add(entity.id, UnsafeUtility.AddressOf(ref component));
+        }
+
+        /// <summary>
+        /// Ensures that a component chunk exists for the specified component type.
+        /// Call this in OnAwake() to guarantee chunk availability in jobs.
+        /// </summary>
+        public void EnsureChunkExists<T>() where T : unmanaged, IComponent
+        {
+            var typeIndex = TypeManager.GetComponentTypeIndex<T>();
+            EnsureComponentChunkExists(typeIndex);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnsafeEcs.Core.Components;
@@ -8,6 +9,30 @@ namespace UnsafeEcs.Core.Entities
 {
     public unsafe partial struct EntityManager
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public BufferChunk* GetBufferChunk(int typeIndex)
+        {
+            return chunks.Ptr[typeIndex].AsBufferChunk();
+        }
+
+        /// <summary>
+        /// Gets a BufferArray without ensuring chunk exists. Burst-compatible, no allocations.
+        /// Use in jobs when you know the chunk already exists.
+        /// Returns default BufferArray if chunk doesn't exist.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public BufferArray<T> GetBufferArrayUnsafe<T>(int typeIndex) where T : unmanaged, IBufferElement
+        {
+            if (typeIndex >= chunks.m_length)
+                return default;
+
+            var chunkUnion = chunks.Ptr + typeIndex;
+            if (chunkUnion->chunkPtr == null || !chunkUnion->isBuffer)
+                return default;
+
+            return new BufferArray<T>((BufferChunk*)chunkUnion->chunkPtr);
+        }
+
         public DynamicBuffer<T> AddBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
         {
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
@@ -37,19 +62,29 @@ namespace UnsafeEcs.Core.Entities
             return buffer;
         }
 
+        /// <summary>
+        /// Ensures that a buffer chunk exists for the specified buffer element type.
+        /// Call this in OnAwake() to guarantee chunk availability in jobs.
+        /// </summary>
+        public void EnsureBufferChunkExists<T>() where T : unmanaged, IBufferElement
+        {
+            var typeIndex = TypeManager.GetBufferTypeIndex<T>();
+            EnsureBufferChunkExists(typeIndex, 0);
+        }
+
         private void EnsureBufferChunkExists(int typeIndex, int maxEntityId)
         {
             if (typeIndex >= chunks.Length)
                 chunks.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
-            
+
             if (chunks.Ptr[typeIndex].IsValid)
                 return;
-            
+
             var elementSize = TypeManager.GetTypeSizeByIndex(typeIndex);
             var bufferChunk = (BufferChunk*)UnsafeUtility.Malloc(UnsafeUtility.SizeOf<BufferChunk>(), UnsafeUtility.AlignOf<BufferChunk>(), Allocator.Persistent);
             *bufferChunk = new BufferChunk(elementSize, InitialEntityCapacity, maxEntityId, typeIndex, m_managerPtr);
             chunks.Ptr[typeIndex] = ChunkUnion.FromBufferChunk(bufferChunk);
-            
+
         }
 
         public DynamicBuffer<T> GetBuffer<T>(Entity entity) where T : unmanaged, IBufferElement
