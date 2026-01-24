@@ -53,14 +53,18 @@ namespace UnsafeEcs.Core.Entities
         /// Ensures that a component chunk exists for the specified component type.
         /// Call this in OnAwake() to guarantee chunk availability in jobs.
         /// </summary>
-        public void EnsureChunkExists<T>() where T : unmanaged, IComponent
+        public void EnsureComponentChunkExists<T>() where T : unmanaged, IComponent
         {
             var typeIndex = TypeManager.GetComponentTypeIndex<T>();
             EnsureComponentChunkExists(typeIndex);
         }
 
+        /// <summary>
+        /// Ensures that a component chunk exists for the specified type index.
+        /// Use this overload in Burst jobs with pre-cached type indices.
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EnsureComponentChunkExists(int typeIndex)
+        public void EnsureComponentChunkExists(int typeIndex)
         {
             if (typeIndex >= chunks.m_length)
                 chunks.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);

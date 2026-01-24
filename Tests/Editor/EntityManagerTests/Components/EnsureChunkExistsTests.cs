@@ -29,7 +29,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         public void EnsureChunkExists_CreatesChunkBeforeAnyEntityHasComponent()
         {
             // Ensure chunk exists before any entity has this component
-            entityManager.EnsureChunkExists<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists<UnusedComponent>();
 
             // GetComponentArray should return valid array with zero length
             var array = entityManager.GetComponentArray<UnusedComponent>();
@@ -45,9 +45,9 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         public void EnsureChunkExists_IsIdempotent()
         {
             // Call multiple times - should not throw or cause issues
-            entityManager.EnsureChunkExists<UnusedComponent>();
-            entityManager.EnsureChunkExists<UnusedComponent>();
-            entityManager.EnsureChunkExists<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists<UnusedComponent>();
 
             var array = entityManager.GetComponentArray<UnusedComponent>();
             Assert.AreEqual(0, array.Length);
@@ -56,7 +56,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         [Test]
         public void EnsureChunkExists_AllowsAddingComponentsAfterward()
         {
-            entityManager.EnsureChunkExists<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists<UnusedComponent>();
 
             var entity = entityManager.CreateEntity();
             entityManager.AddComponent(entity, new UnusedComponent { value = 42 });
@@ -69,8 +69,8 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         [Test]
         public void EnsureChunkExists_WorksWithMultipleComponentTypes()
         {
-            entityManager.EnsureChunkExists<UnusedComponent>();
-            entityManager.EnsureChunkExists<AnotherUnusedComponent>();
+            entityManager.EnsureComponentChunkExists<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists<AnotherUnusedComponent>();
 
             var array1 = entityManager.GetComponentArray<UnusedComponent>();
             var array2 = entityManager.GetComponentArray<AnotherUnusedComponent>();
@@ -92,7 +92,7 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
         [Test]
         public void EnsureChunkExists_ChunkRemainsValidAfterEntityOperations()
         {
-            entityManager.EnsureChunkExists<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists<UnusedComponent>();
             var typeIndex = TypeManager.GetComponentTypeIndex<UnusedComponent>();
 
             // Create and destroy entities
@@ -117,12 +117,56 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
             entityManager.AddComponent(entity, new UnusedComponent { value = 100 });
 
             // Then call EnsureChunkExists
-            entityManager.EnsureChunkExists<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists<UnusedComponent>();
 
             // Original data should be preserved
             var array = entityManager.GetComponentArray<UnusedComponent>();
             Assert.AreEqual(1, array.Length);
             Assert.AreEqual(100, array.Get(entity).value);
+        }
+
+        #endregion
+
+        #region Component Chunk Tests with TypeIndex
+
+        [Test]
+        public void EnsureComponentChunkExists_WithTypeIndex_CreatesChunk()
+        {
+            var typeIndex = TypeManager.GetComponentTypeIndex<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists(typeIndex);
+
+            var array = entityManager.GetComponentArray<UnusedComponent>();
+            Assert.AreEqual(0, array.Length);
+            Assert.IsTrue(entityManager.chunks[typeIndex].IsValid);
+        }
+
+        [Test]
+        public void EnsureComponentChunkExists_WithTypeIndex_IsIdempotent()
+        {
+            var typeIndex = TypeManager.GetComponentTypeIndex<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists(typeIndex);
+            entityManager.EnsureComponentChunkExists(typeIndex);
+            entityManager.EnsureComponentChunkExists(typeIndex);
+
+            var array = entityManager.GetComponentArray<UnusedComponent>();
+            Assert.AreEqual(0, array.Length);
+        }
+
+        [Test]
+        public void EnsureComponentChunkExists_WithTypeIndex_MatchesGenericOverload()
+        {
+            var typeIndex = TypeManager.GetComponentTypeIndex<UnusedComponent>();
+
+            // Use typeIndex version
+            entityManager.EnsureComponentChunkExists(typeIndex);
+
+            var entity = entityManager.CreateEntity();
+            entityManager.AddComponent(entity, new UnusedComponent { value = 42 });
+
+            // Verify works the same as generic
+            var array = entityManager.GetComponentArray<UnusedComponent>();
+            Assert.AreEqual(1, array.Length);
+            Assert.AreEqual(42, array.Get(entity).value);
         }
 
         #endregion
@@ -182,12 +226,56 @@ namespace UnsafeEcs.Tests.Editor.EntityManagerTests.Components
 
         #endregion
 
+        #region Buffer Chunk Tests with TypeIndex
+
+        [Test]
+        public void EnsureBufferChunkExists_WithTypeIndex_CreatesChunk()
+        {
+            var typeIndex = TypeManager.GetBufferTypeIndex<UnusedBufferElement>();
+            entityManager.EnsureBufferChunkExists(typeIndex);
+
+            var array = entityManager.GetBufferArray<UnusedBufferElement>();
+            Assert.AreEqual(0, array.Length);
+            Assert.IsTrue(entityManager.chunks[typeIndex].IsValid);
+        }
+
+        [Test]
+        public void EnsureBufferChunkExists_WithTypeIndex_IsIdempotent()
+        {
+            var typeIndex = TypeManager.GetBufferTypeIndex<UnusedBufferElement>();
+            entityManager.EnsureBufferChunkExists(typeIndex);
+            entityManager.EnsureBufferChunkExists(typeIndex);
+            entityManager.EnsureBufferChunkExists(typeIndex);
+
+            var array = entityManager.GetBufferArray<UnusedBufferElement>();
+            Assert.AreEqual(0, array.Length);
+        }
+
+        [Test]
+        public void EnsureBufferChunkExists_WithTypeIndex_MatchesGenericOverload()
+        {
+            var typeIndex = TypeManager.GetBufferTypeIndex<UnusedBufferElement>();
+            entityManager.EnsureBufferChunkExists(typeIndex);
+
+            var entity = entityManager.CreateEntity();
+            var buffer = entityManager.AddBuffer<UnusedBufferElement>(entity);
+            buffer.Add(new UnusedBufferElement { data = 42 });
+
+            var array = entityManager.GetBufferArray<UnusedBufferElement>();
+            Assert.AreEqual(1, array.Length);
+
+            var retrievedBuffer = entityManager.GetBuffer<UnusedBufferElement>(entity);
+            Assert.AreEqual(42, retrievedBuffer[0].data);
+        }
+
+        #endregion
+
         #region Mixed Component and Buffer Tests
 
         [Test]
         public void EnsureChunkExists_ComponentAndBufferCanCoexist()
         {
-            entityManager.EnsureChunkExists<UnusedComponent>();
+            entityManager.EnsureComponentChunkExists<UnusedComponent>();
             entityManager.EnsureBufferChunkExists<UnusedBufferElement>();
 
             var entity = entityManager.CreateEntity();

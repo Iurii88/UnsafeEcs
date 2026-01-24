@@ -38,7 +38,7 @@ namespace UnsafeEcs.Core.Entities
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
 
             // Ensure the buffer chunk exists
-            EnsureBufferChunkExists(typeIndex, entity.id + 1);
+            EnsureBufferChunkExistsInternal(typeIndex, entity.id + 1);
 
             var existingBufferChunk = chunks.Ptr[typeIndex].AsBufferChunk();
             if (existingBufferChunk == null)
@@ -69,10 +69,20 @@ namespace UnsafeEcs.Core.Entities
         public void EnsureBufferChunkExists<T>() where T : unmanaged, IBufferElement
         {
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
-            EnsureBufferChunkExists(typeIndex, 0);
+            EnsureBufferChunkExists(typeIndex);
         }
 
-        private void EnsureBufferChunkExists(int typeIndex, int maxEntityId)
+        /// <summary>
+        /// Ensures that a buffer chunk exists for the specified type index.
+        /// Use this overload in Burst jobs with pre-cached type indices.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void EnsureBufferChunkExists(int typeIndex)
+        {
+            EnsureBufferChunkExistsInternal(typeIndex, 0);
+        }
+
+        private void EnsureBufferChunkExistsInternal(int typeIndex, int maxEntityId)
         {
             if (typeIndex >= chunks.Length)
                 chunks.Resize(typeIndex + 1, NativeArrayOptions.ClearMemory);
@@ -251,7 +261,7 @@ namespace UnsafeEcs.Core.Entities
         public BufferArray<T> GetBufferArray<T>() where T : unmanaged, IBufferElement
         {
             var typeIndex = TypeManager.GetBufferTypeIndex<T>();
-            EnsureBufferChunkExists(typeIndex, 0);
+            EnsureBufferChunkExistsInternal(typeIndex, 0);
             if (typeIndex < chunks.Length)
             {
                 var chunk = chunks.Ptr[typeIndex].AsBufferChunk();
