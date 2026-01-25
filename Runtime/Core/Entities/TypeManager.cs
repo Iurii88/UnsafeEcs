@@ -285,7 +285,9 @@ namespace UnsafeEcs.Core.Components
         public static void ClearEditorRegistry()
         {
             s_hashToTypeRegistry?.Clear();
+#if UNITY_EDITOR
             s_registryRebuilt = false;
+#endif
         }
 
         // Type cache static storage
