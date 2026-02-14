@@ -157,6 +157,35 @@ namespace UnsafeEcs.Core.Entities
 
             return entity;
         }
+        
+        public void CreateEntitiesRaw(int count, NativeArray<Entity> results)
+        {
+            var startId = nextId.Value;
+            nextId.Value += count;
+            var endId = startId + count;
+
+            if (entities.Length < endId)
+            {
+                entities.Resize(endId);
+                entityArchetypes.Resize(endId);
+                deadEntities.Resize(endId);
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                var entityId = startId + i;
+                var entity = new Entity
+                {
+                    id = entityId,
+                    version = 1,
+                    managerPtr = m_managerPtr
+                };
+                entities.Ptr[entityId] = entity;
+                entityArchetypes.Ptr[entityId] = new EntityArchetype();
+                deadEntities.Ptr[entityId] = false;
+                results[i] = entity;
+            }
+        }
 
         public UnsafeList<Entity> CreateEntities(EntityArchetype archetype, int count, Allocator allocator)
         {
