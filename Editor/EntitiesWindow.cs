@@ -62,6 +62,47 @@ namespace UnsafeEcs.Editor
             window.Show();
         }
 
+        /// <summary>
+        /// Selects an entity by ID in the specified world, opening the window if needed.
+        /// </summary>
+        /// <param name="world">The world containing the entity.</param>
+        /// <param name="entityId">The entity ID to select.</param>
+        public static void SelectEntity(World world, int entityId)
+        {
+            var window = GetWindow<EntitiesWindow>();
+            window.titleContent = new GUIContent("ECS Entities");
+            window.minSize = new Vector2(600, 400);
+            window.Show();
+
+            window.m_selectedWorld = world;
+            window.m_selectedEntityId = entityId;
+            window.RefreshEntityCache();
+            window.Repaint();
+        }
+
+        /// <summary>
+        /// Selects an entity by its Entity struct, opening the window if needed.
+        /// </summary>
+        /// <param name="world">The world containing the entity.</param>
+        /// <param name="entity">The entity to select.</param>
+        public static void SelectEntity(World world, Entity entity)
+        {
+            SelectEntity(world, entity.id);
+        }
+
+        /// <summary>
+        /// Selects an entity by ID in the world at the given index, opening the window if needed.
+        /// </summary>
+        /// <param name="worldIndex">Index into WorldManager.Worlds.</param>
+        /// <param name="entityId">The entity ID to select.</param>
+        public static void SelectEntity(int worldIndex, int entityId)
+        {
+            if (worldIndex < 0 || worldIndex >= WorldManager.Worlds.Count)
+                return;
+
+            SelectEntity(WorldManager.Worlds[worldIndex], entityId);
+        }
+
         private void OnEnable()
         {
             m_searchField = new SearchField();
