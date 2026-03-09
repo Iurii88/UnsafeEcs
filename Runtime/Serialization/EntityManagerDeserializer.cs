@@ -172,7 +172,7 @@ namespace UnsafeEcs.Serialization
                     var version = *(uint*)(ptr + position);
                     position += 4;
 
-                    var entity = new Entity { id = id, version = version };
+                    var entity = new Entity { id = id, version = version, managerPtr = manager };
                     manager->entities.Add(entity);
                 }
 
@@ -472,7 +472,7 @@ namespace UnsafeEcs.Serialization
                     position += 4;
                     var version = *(uint*)(ptr + position);
                     position += 4;
-                    manager->entities.Add(new Entity { id = id, version = version });
+                    manager->entities.Add(new Entity { id = id, version = version, managerPtr = manager });
                 }
 
                 manager->deadEntities.Clear();
