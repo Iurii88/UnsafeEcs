@@ -14,6 +14,8 @@ namespace UnsafeEcs.Serialization
         private const int SerializationMagic = 0xEC51;
         private const int SerializationMagicV2 = 0xEC52;
 
+        private static byte[] s_cachedOutputV2;
+
         public static byte[] Serialize(ReferenceWrapper<EntityManager> managerWrapper)
         {
             var sizeCalculator = new UnsafeItem<int>(0, Allocator.TempJob);
@@ -43,6 +45,11 @@ namespace UnsafeEcs.Serialization
 
         public static byte[] SerializeV2(ReferenceWrapper<EntityManager> managerWrapper)
         {
+            return SerializeV2(managerWrapper, out _);
+        }
+
+        public static byte[] SerializeV2(ReferenceWrapper<EntityManager> managerWrapper, out int dataLength)
+        {
             var sizeCalculator = new UnsafeItem<int>(0, Allocator.TempJob);
             new SizeCalculationJobV2
                 {
@@ -51,9 +58,13 @@ namespace UnsafeEcs.Serialization
                 }.Schedule()
                 .Complete();
 
-            var output = new byte[sizeCalculator.Value];
+            dataLength = sizeCalculator.Value;
+            sizeCalculator.Dispose();
 
-            fixed (byte* ptr = output)
+            if (s_cachedOutputV2 == null || s_cachedOutputV2.Length < dataLength)
+                s_cachedOutputV2 = new byte[dataLength];
+
+            fixed (byte* ptr = s_cachedOutputV2)
             {
                 new SerializeJobV2
                     {
@@ -63,9 +74,7 @@ namespace UnsafeEcs.Serialization
                     .Complete();
             }
 
-            sizeCalculator.Dispose();
-
-            return output;
+            return s_cachedOutputV2;
         }
 
         [BurstCompile]
